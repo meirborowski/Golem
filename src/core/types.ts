@@ -87,6 +87,12 @@ export interface PendingApproval {
   resolve: (approved: boolean) => void;
 }
 
+export type ApprovalCallback = (
+  toolName: string,
+  toolCallId: string,
+  args: unknown,
+) => Promise<boolean>;
+
 export type AppAction =
   | { type: 'ADD_USER_MESSAGE'; content: string }
   | { type: 'ADD_ASSISTANT_MESSAGE' }

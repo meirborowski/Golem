@@ -1,14 +1,39 @@
 import { readFile, writeFile, editFile, listFiles, searchFiles, bash } from '../tools/index.js';
-import type { ResolvedConfig } from './types.js';
+import type { ResolvedConfig, ApprovalCallback } from './types.js';
 
-// Use Record<string, unknown> to avoid strict tool type mismatch across different schemas
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolSet = Record<string, any>;
 
-export function createBuiltinTools(config: ResolvedConfig): ToolSet {
+const TOOLS_REQUIRING_APPROVAL = new Set(['bash']);
+
+function wrapWithApproval(
+  originalTool: ToolSet[string],
+  toolName: string,
+  onApprovalNeeded: ApprovalCallback,
+): ToolSet[string] {
+  return {
+    ...originalTool,
+    execute: async (args: unknown, context: unknown) => {
+      const ctx = context as { toolCallId?: string } | undefined;
+      const toolCallId = ctx?.toolCallId ?? `${toolName}-${Date.now()}`;
+
+      const approved = await onApprovalNeeded(toolName, toolCallId, args);
+      if (!approved) {
+        return { success: false, error: 'Command denied by user' };
+      }
+
+      return originalTool.execute(args, context);
+    },
+  };
+}
+
+export function createBuiltinTools(
+  config: ResolvedConfig,
+  onApprovalNeeded?: ApprovalCallback,
+): ToolSet {
   const cwd = config.cwd;
 
-  return {
+  const allTools: ToolSet = {
     readFile: readFile(cwd),
     writeFile: writeFile(cwd),
     editFile: editFile(cwd),
@@ -16,4 +41,14 @@ export function createBuiltinTools(config: ResolvedConfig): ToolSet {
     searchFiles: searchFiles(cwd),
     bash: bash(cwd),
   };
+
+  if (onApprovalNeeded) {
+    for (const name of TOOLS_REQUIRING_APPROVAL) {
+      if (allTools[name]) {
+        allTools[name] = wrapWithApproval(allTools[name], name, onApprovalNeeded);
+      }
+    }
+  }
+
+  return allTools;
 }

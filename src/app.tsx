@@ -2,7 +2,6 @@ import React from 'react';
 import { AppContextProvider } from './ui/context/app-context.js';
 import { ChatView } from './ui/components/chat-view.js';
 import { resolveModel, getDefaultModel } from './core/provider-registry.js';
-import { createBuiltinTools } from './core/tool-registry.js';
 import type { ResolvedConfig } from './core/types.js';
 
 interface AppProps {
@@ -11,12 +10,11 @@ interface AppProps {
 
 export function App({ config }: AppProps) {
   const model = resolveModel(config);
-  const tools = createBuiltinTools(config);
   const modelName = config.model || getDefaultModel(config.provider);
 
   return (
     <AppContextProvider config={config}>
-      <ChatView model={model} tools={tools} modelName={modelName} />
+      <ChatView model={model} modelName={modelName} />
     </AppContextProvider>
   );
 }

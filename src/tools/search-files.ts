@@ -17,19 +17,14 @@ export const searchFiles = (cwd: string) =>
       'Search file contents using a regex pattern. Returns matching lines with surrounding context. Respects .gitignore.',
     parameters: z.object({
       pattern: z.string().describe('Regex pattern to search for'),
-      glob: z
-        .string()
-        .optional()
-        .default('**/*')
-        .describe('Glob pattern to filter which files to search'),
-      maxResults: z.number().optional().default(50).describe('Maximum number of matches to return'),
-      contextLines: z
-        .number()
-        .optional()
-        .default(2)
-        .describe('Number of lines of context around each match'),
+      glob: z.union([z.string(), z.null()]).describe('Glob pattern to filter which files to search. Null defaults to "**/*".'),
+      maxResults: z.union([z.number(), z.null()]).describe('Maximum number of matches to return. Null defaults to 50.'),
+      contextLines: z.union([z.number(), z.null()]).describe('Number of lines of context around each match. Null defaults to 2.'),
     }),
-    execute: async ({ pattern, glob, maxResults, contextLines }) => {
+    execute: async ({ pattern, glob: rawGlob, maxResults: rawMax, contextLines: rawCtx }) => {
+      const glob = rawGlob ?? '**/*';
+      const maxResults = rawMax ?? 50;
+      const contextLines = rawCtx ?? 2;
       try {
         const regex = new RegExp(pattern, 'gi');
 

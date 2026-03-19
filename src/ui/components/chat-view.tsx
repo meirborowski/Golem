@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useApp } from 'ink';
 import type { LanguageModel } from '../../core/types.js';
-import type { ToolSet } from '../../core/tool-registry.js';
 import { useAppContext } from '../context/app-context.js';
 import { useConversation } from '../hooks/use-conversation.js';
 import { Welcome } from './welcome.js';
@@ -9,6 +8,7 @@ import { Message } from './message.js';
 import { InputBar } from './input-bar.js';
 import { Spinner } from './spinner.js';
 import { StatusBar } from './status-bar.js';
+import { ApprovalPrompt } from './approval-prompt.js';
 
 const HELP_TEXT = [
   'Available commands:',
@@ -21,13 +21,12 @@ const HELP_TEXT = [
 
 interface ChatViewProps {
   model: LanguageModel;
-  tools: ToolSet;
   modelName: string;
 }
 
-export function ChatView({ model, tools, modelName }: ChatViewProps) {
-  const { config, dispatch } = useAppContext();
-  const { messages, isStreaming, error, tokenUsage, sendMessage } = useConversation(model, tools);
+export function ChatView({ model, modelName }: ChatViewProps) {
+  const { config, dispatch, state } = useAppContext();
+  const { messages, isStreaming, error, tokenUsage, sendMessage } = useConversation(model);
   const [showWelcome, setShowWelcome] = useState(true);
   const { exit } = useApp();
 
@@ -92,7 +91,9 @@ export function ChatView({ model, tools, modelName }: ChatViewProps) {
         <Message key={i} message={msg} />
       ))}
 
-      {isStreaming && <Spinner />}
+      {isStreaming && !state.pendingApproval && <Spinner />}
+
+      {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
 
       {error && (
         <Box marginLeft={2} marginBottom={1}>

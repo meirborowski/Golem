@@ -1,15 +1,33 @@
 import { useCallback, useRef } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
-import type { LanguageModel } from '../../core/types.js';
-import type { ToolSet } from '../../core/tool-registry.js';
+import { createBuiltinTools } from '../../core/tool-registry.js';
+import type { LanguageModel, ApprovalCallback } from '../../core/types.js';
 
-export function useConversation(model: LanguageModel, tools: ToolSet) {
+export function useConversation(model: LanguageModel) {
   const { state, dispatch, config } = useAppContext();
+
+  // Keep a stable ref to dispatch so the approval callback never goes stale
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+
+  const approvalCallback = useCallback<ApprovalCallback>(
+    (toolName, toolCallId, args) => {
+      return new Promise<boolean>((resolve) => {
+        dispatchRef.current({
+          type: 'SET_PENDING_APPROVAL',
+          approval: { toolCallId, toolName, args, resolve },
+        });
+      });
+    },
+    [],
+  );
+
   const engineRef = useRef<ConversationEngine | null>(null);
 
-  // Lazily create the engine
+  // Lazily create the engine with approval-wrapped tools
   if (!engineRef.current) {
+    const tools = createBuiltinTools(config, approvalCallback);
     engineRef.current = new ConversationEngine(model, tools, config);
   }
 

@@ -10,13 +10,10 @@ export const bash = (cwd: string) =>
       'Execute a shell command. The command runs in the project working directory. Use for running builds, tests, git commands, etc.',
     parameters: z.object({
       command: z.string().describe('The shell command to execute'),
-      timeout: z
-        .number()
-        .optional()
-        .default(DEFAULT_TIMEOUT)
-        .describe('Timeout in milliseconds (default: 30000)'),
+      timeout: z.union([z.number(), z.null()]).describe('Timeout in milliseconds. Null defaults to 30000.'),
     }),
-    execute: async ({ command, timeout }) => {
+    execute: async ({ command, timeout: rawTimeout }) => {
+      const timeout = rawTimeout ?? DEFAULT_TIMEOUT;
       try {
         const stdout = execSync(command, {
           cwd,
