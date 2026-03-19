@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { saveSession, loadSession, listSessions, getLatestSessionId } from './session.js';
+import { saveSession, loadSession, listSessions, getLatestSessionId, exportToMarkdown } from './session.js';
 import type { ChatMessage, TokenUsage, ResolvedConfig } from './types.js';
 
 const TMP = join(tmpdir(), `golem-test-session-${Date.now()}`);
@@ -130,5 +130,80 @@ describe('getLatestSessionId', () => {
   it('returns null when no sessions', () => {
     vi.stubEnv('XDG_CONFIG_HOME', join(TMP, 'empty2'));
     expect(getLatestSessionId()).toBeNull();
+  });
+});
+
+describe('exportToMarkdown', () => {
+  it('includes header with provider and model', () => {
+    const md = exportToMarkdown(testMessages, 'openai', 'gpt-4o');
+    expect(md).toContain('# Golem Conversation');
+    expect(md).toContain('openai/gpt-4o');
+  });
+
+  it('renders user and assistant messages', () => {
+    const md = exportToMarkdown(testMessages, 'openai', 'gpt-4o');
+    expect(md).toContain('## 🧑 User');
+    expect(md).toContain('hello');
+    expect(md).toContain('## 🤖 Assistant');
+    expect(md).toContain('hi there');
+  });
+
+  it('skips system messages', () => {
+    const md = exportToMarkdown(testMessages, 'openai', 'gpt-4o');
+    expect(md).not.toContain('system note');
+  });
+
+  it('renders tool calls with args', () => {
+    const messagesWithTools: ChatMessage[] = [
+      { role: 'user', content: 'read the file', timestamp: 1000 },
+      {
+        role: 'assistant',
+        content: 'Here is the file:',
+        timestamp: 2000,
+        toolCalls: [
+          {
+            id: 'tc1',
+            toolName: 'readFile',
+            args: { path: '/tmp/test.txt' },
+            result: { success: true, content: 'file contents' },
+            status: 'completed',
+          },
+        ],
+      },
+    ];
+
+    const md = exportToMarkdown(messagesWithTools, 'anthropic', 'claude');
+    expect(md).toContain('**Tool: readFile**');
+    expect(md).toContain('/tmp/test.txt');
+    expect(md).toContain('file contents');
+    expect(md).toContain('<details>');
+  });
+
+  it('handles tool calls without results', () => {
+    const messagesWithPendingTool: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: '',
+        timestamp: 1000,
+        toolCalls: [
+          {
+            id: 'tc1',
+            toolName: 'bash',
+            args: { command: 'ls' },
+            status: 'running',
+          },
+        ],
+      },
+    ];
+
+    const md = exportToMarkdown(messagesWithPendingTool, 'openai', 'gpt-4o');
+    expect(md).toContain('**Tool: bash**');
+    expect(md).not.toContain('<details>');
+  });
+
+  it('returns valid markdown for empty messages', () => {
+    const md = exportToMarkdown([], 'openai', 'gpt-4o');
+    expect(md).toContain('# Golem Conversation');
+    expect(md).not.toContain('## 🧑 User');
   });
 });

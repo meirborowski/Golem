@@ -133,3 +133,60 @@ export function getLatestSessionId(): string | null {
   const sessions = listSessions(1);
   return sessions.length > 0 ? sessions[0].id : null;
 }
+
+// ── Export ──────────────────────────────────────────────────────────────────
+
+function formatToolCall(tc: import('./types.js').ToolCallInfo): string {
+  const argsStr = typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args, null, 2);
+  let block = `**Tool: ${tc.toolName}**\n\`\`\`json\n${argsStr}\n\`\`\``;
+  if (tc.result !== undefined) {
+    const resultStr = typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2);
+    block += `\n\n<details>\n<summary>Result</summary>\n\n\`\`\`json\n${resultStr}\n\`\`\`\n</details>`;
+  }
+  return block;
+}
+
+export function exportToMarkdown(
+  messages: ChatMessage[],
+  provider: string,
+  model: string,
+): string {
+  const lines: string[] = [];
+  const date = new Date().toLocaleString();
+
+  lines.push(`# Golem Conversation`);
+  lines.push('');
+  lines.push(`> Exported ${date} — ${provider}/${model}`);
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  for (const msg of messages) {
+    if (msg.role === 'system') continue; // Skip system messages (slash command output)
+
+    if (msg.role === 'user') {
+      lines.push(`## 🧑 User`);
+      lines.push('');
+      lines.push(msg.content);
+      lines.push('');
+    } else if (msg.role === 'assistant') {
+      lines.push(`## 🤖 Golem`);
+      lines.push('');
+      if (msg.content) {
+        lines.push(msg.content);
+        lines.push('');
+      }
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        for (const tc of msg.toolCalls) {
+          lines.push(formatToolCall(tc));
+          lines.push('');
+        }
+      }
+    }
+
+    lines.push('---');
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}

@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { Box, Text, Static, useApp } from 'ink';
 import { useAppContext } from '../context/app-context.js';
 import { useConversation } from '../hooks/use-conversation.js';
-import { saveSession, loadSession, listSessions } from '../../core/session.js';
+import { saveSession, loadSession, listSessions, exportToMarkdown } from '../../core/session.js';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { listProviders, getProvider } from '../../core/provider-registry.js';
 import { Welcome } from './welcome.js';
 import { Message } from './message.js';
@@ -21,6 +23,7 @@ const HELP_TEXT = [
   '  /save              Save current session',
   '  /load [id]         Load a saved session (latest if no id)',
   '  /history           List saved sessions',
+  '  /export [path]     Export conversation as markdown',
   '  /exit, /quit       Exit Golem',
 ].join('\n');
 
@@ -231,6 +234,33 @@ export function ChatView() {
           lines.push('Use /load <id> to load a session.');
 
           dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: lines.join('\n') });
+          return;
+        }
+
+        case 'export': {
+          if (messages.length === 0) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: 'Nothing to export — no messages in this session.',
+            });
+            return;
+          }
+
+          try {
+            const markdown = exportToMarkdown(messages, activeProvider, activeModelName);
+            const filename = arg || `golem-export-${new Date().toISOString().slice(0, 10)}.md`;
+            const filePath = resolve(config.cwd, filename);
+            writeFileSync(filePath, markdown, 'utf-8');
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Exported ${messages.length} messages to ${filePath}`,
+            });
+          } catch (err) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Failed to export: ${err instanceof Error ? err.message : String(err)}`,
+            });
+          }
           return;
         }
 
