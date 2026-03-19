@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { CoreMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
 import { detectProject } from '../utils/detect-project.js';
+import { loadMemoryForPrompt } from './memory.js';
 import { logger } from '../utils/logger.js';
 
 const PROJECT_DOC_FILES = ['GOLEM.md', 'CLAUDE.md', 'README.md'];
@@ -246,6 +247,14 @@ export class ConversationEngine {
       parts.push(doc.content);
     }
 
+    // Load persistent memory
+    const memoryContent = loadMemoryForPrompt(this.config.cwd);
+    if (memoryContent) {
+      parts.push('');
+      parts.push('## Remembered Context');
+      parts.push(memoryContent);
+    }
+
     parts.push('');
     parts.push('## Available Tools');
     parts.push('- readFile: Read file contents with optional line range');
@@ -259,6 +268,7 @@ export class ConversationEngine {
     parts.push('- fetchUrl: Make HTTP requests to URLs');
     parts.push('- patch: Apply unified diffs to files');
     parts.push('- todoManager: Track tasks within the session');
+    parts.push('- memory: Persistent key-value store across sessions');
 
     return parts.join('\n');
   }

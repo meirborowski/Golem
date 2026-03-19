@@ -13,7 +13,9 @@ import { think } from './think.js';
 import { fetchUrl } from './fetch.js';
 import { patch } from './patch.js';
 import { todoManager } from './todo-manager.js';
+import { memory } from './memory.js';
 import { execSync } from 'node:child_process';
+import { vi } from 'vitest';
 
 const TMP = join(tmpdir(), `golem-test-tools-${Date.now()}`);
 
@@ -134,7 +136,7 @@ describe('listFiles tool', () => {
     const tool = listFiles(TMP);
     const result = await tool.execute({ pattern: '*.txt', maxResults: 2 }, { toolCallId: 'test', messages: [] });
 
-    expect(result.files.length).toBeLessThanOrEqual(2);
+    expect(result.files!.length).toBeLessThanOrEqual(2);
     expect(result.truncated).toBe(true);
   });
 });
@@ -151,8 +153,8 @@ describe('searchFiles tool', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.matches.length).toBeGreaterThanOrEqual(1);
-    expect(result.matches[0].content).toContain('hello');
+    expect(result.matches!.length).toBeGreaterThanOrEqual(1);
+    expect(result.matches![0].content).toContain('hello');
   });
 
   it('returns empty for no matches', async () => {
@@ -532,5 +534,114 @@ describe('todoManager tool', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('required');
+  });
+});
+
+// ── memory ──────────────────────────────────────────────────────────────────
+
+describe('memory tool', () => {
+  const MEM_CWD = join(TMP, 'memory-test');
+
+  beforeEach(() => mkdirSync(MEM_CWD, { recursive: true }));
+
+  it('stores and retrieves a value', async () => {
+    const tool = memory(MEM_CWD);
+    const setResult = await tool.execute(
+      { action: 'set', key: 'lang', value: 'typescript', scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(setResult.success).toBe(true);
+
+    const getResult = await tool.execute(
+      { action: 'get', key: 'lang', value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(getResult.success).toBe(true);
+    expect(getResult.value).toBe('typescript');
+  });
+
+  it('lists all entries', async () => {
+    const tool = memory(MEM_CWD + '-list');
+    await tool.execute({ action: 'set', key: 'a', value: '1', scope: 'project' }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'set', key: 'b', value: '2', scope: 'project' }, { toolCallId: 'test', messages: [] });
+
+    const result = await tool.execute(
+      { action: 'list', key: null, value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(2);
+  });
+
+  it('deletes an entry', async () => {
+    const tool = memory(MEM_CWD + '-del');
+    await tool.execute({ action: 'set', key: 'tmp', value: 'val', scope: 'project' }, { toolCallId: 'test', messages: [] });
+
+    const delResult = await tool.execute(
+      { action: 'delete', key: 'tmp', value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(delResult.success).toBe(true);
+
+    const getResult = await tool.execute(
+      { action: 'get', key: 'tmp', value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(getResult.success).toBe(false);
+  });
+
+  it('clears all entries', async () => {
+    const tool = memory(MEM_CWD + '-clear');
+    await tool.execute({ action: 'set', key: 'x', value: '1', scope: 'project' }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'set', key: 'y', value: '2', scope: 'project' }, { toolCallId: 'test', messages: [] });
+
+    const result = await tool.execute(
+      { action: 'clear', key: null, value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Cleared 2');
+  });
+
+  it('uses global scope when specified', async () => {
+    // Stub XDG to use temp dir for global storage
+    vi.stubEnv('XDG_CONFIG_HOME', MEM_CWD + '-global');
+
+    const tool = memory(MEM_CWD);
+    const setResult = await tool.execute(
+      { action: 'set', key: 'theme', value: 'dark', scope: 'global' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(setResult.success).toBe(true);
+    expect(setResult.scope).toBe('global');
+
+    const getResult = await tool.execute(
+      { action: 'get', key: 'theme', value: null, scope: 'global' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(getResult.success).toBe(true);
+    expect(getResult.value).toBe('dark');
+
+    vi.unstubAllEnvs();
+  });
+
+  it('defaults to project scope', async () => {
+    const tool = memory(MEM_CWD + '-default');
+    const result = await tool.execute(
+      { action: 'set', key: 'foo', value: 'bar', scope: null },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(result.success).toBe(true);
+    expect(result.scope).toBe('project');
+  });
+
+  it('returns error for get on non-existent key', async () => {
+    const tool = memory(MEM_CWD + '-nokey');
+    const result = await tool.execute(
+      { action: 'get', key: 'nope', value: null, scope: 'project' },
+      { toolCallId: 'test', messages: [] },
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
   });
 });

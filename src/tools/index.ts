@@ -9,3 +9,4 @@ export { think } from './think.js';
 export { fetchUrl } from './fetch.js';
 export { patch } from './patch.js';
 export { todoManager } from './todo-manager.js';
+export { memory } from './memory.js';
