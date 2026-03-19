@@ -2,7 +2,8 @@ import { useCallback, useRef } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools } from '../../core/tool-registry.js';
-import type { LanguageModel, ApprovalCallback } from '../../core/types.js';
+import type { LanguageModel, ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
+import type { CoreMessage } from 'ai';
 
 export function useConversation(model: LanguageModel) {
   const { state, dispatch, config } = useAppContext();
@@ -85,11 +86,27 @@ export function useConversation(model: LanguageModel) {
     [state.isStreaming, dispatch, config],
   );
 
+  const loadSession = useCallback(
+    (messages: ChatMessage[], tokenUsage: TokenUsage) => {
+      if (!engineRef.current) return;
+
+      // Convert ChatMessages to CoreMessages for the engine
+      const coreMessages: CoreMessage[] = messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+      engineRef.current.loadHistory(coreMessages, tokenUsage);
+      dispatch({ type: 'LOAD_SESSION', messages, tokenUsage });
+    },
+    [dispatch],
+  );
+
   return {
     messages: state.messages,
     isStreaming: state.isStreaming,
     error: state.error,
     tokenUsage: state.tokenUsage,
     sendMessage,
+    loadSession,
   };
 }

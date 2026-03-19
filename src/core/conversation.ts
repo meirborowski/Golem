@@ -25,7 +25,7 @@ export class ConversationEngine {
         system: this.buildSystemPrompt(),
         messages: this.messages,
         tools: this.tools,
-        maxSteps: 10,
+        maxSteps: 1000,
         maxTokens: this.config.maxTokens,
         temperature: this.config.temperature,
       });
@@ -103,6 +103,13 @@ export class ConversationEngine {
     this.totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
   }
 
+  loadHistory(messages: CoreMessage[], usage?: TokenUsage): void {
+    this.messages = [...messages];
+    if (usage) {
+      this.totalUsage = { ...usage };
+    }
+  }
+
   private buildSystemPrompt(): string {
     const parts: string[] = [
       'You are Golem, an AI coding assistant running in the terminal.',
@@ -115,6 +122,8 @@ export class ConversationEngine {
       '- When editing files, provide enough context in oldText to ensure a unique match.',
       '- Show relevant code snippets in your responses using markdown code blocks.',
       '- If you are unsure about something, say so rather than guessing.',
+      '- Be efficient with tool calls. Read only the files you need — don\'t read every file in the project.',
+      '- After gathering enough context, respond with your answer. Don\'t keep reading more files.',
       '',
       `## Working Directory`,
       `Current directory: ${this.config.cwd}`,

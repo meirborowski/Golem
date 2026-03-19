@@ -92,6 +92,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ],
       };
 
+    case 'LOAD_SESSION':
+      return {
+        ...state,
+        messages: action.messages,
+        tokenUsage: action.tokenUsage,
+        error: null,
+      };
+
     default:
       return state;
   }

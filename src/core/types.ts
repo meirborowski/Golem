@@ -105,7 +105,21 @@ export type AppAction =
   | { type: 'SET_PENDING_APPROVAL'; approval: PendingApproval | null }
   | { type: 'START_STREAMING' }
   | { type: 'CLEAR_MESSAGES' }
-  | { type: 'ADD_SYSTEM_MESSAGE'; content: string };
+  | { type: 'ADD_SYSTEM_MESSAGE'; content: string }
+  | { type: 'LOAD_SESSION'; messages: ChatMessage[]; tokenUsage: TokenUsage };
+
+// ── Session ────────────────────────────────────────────────────────────────
+
+export interface SavedSession {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  provider: string;
+  model: string;
+  cwd: string;
+  messages: ChatMessage[];
+  tokenUsage: TokenUsage;
+}
 
 // ── Re-export ───────────────────────────────────────────────────────────────
 
