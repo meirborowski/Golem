@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Text, useApp } from 'ink';
+import React, { useState, useMemo } from 'react';
+import { Box, Text, Static, useApp } from 'ink';
 import type { LanguageModel } from '../../core/types.js';
 import { useAppContext } from '../context/app-context.js';
 import { useConversation } from '../hooks/use-conversation.js';
@@ -191,31 +191,62 @@ export function ChatView({ model, modelName }: ChatViewProps) {
     sendMessage(input);
   };
 
+  // Split messages: completed ones go to <Static>, the active one stays dynamic
+  const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+  const isLastStreaming = isStreaming && lastMsg?.role === 'assistant';
+
+  // Completed messages = all except the one currently being streamed
+  const completedMessages = useMemo(() => {
+    if (isLastStreaming) {
+      return messages.slice(0, -1).map((msg, i) => ({ ...msg, _key: i }));
+    }
+    return messages.map((msg, i) => ({ ...msg, _key: i }));
+  }, [messages, isLastStreaming]);
+
+  const activeMessage = isLastStreaming ? lastMsg : null;
+
   return (
-    <Box flexDirection="column">
-      {showWelcome && (
-        <Welcome provider={config.provider} model={modelName} cwd={config.cwd} />
-      )}
+    <>
+      {/* Static: rendered once, never redrawn — eliminates flicker on old messages */}
+      <Static items={completedMessages}>
+        {(msg, i) => {
+          // Show welcome before the first message
+          if (i === 0 && showWelcome) {
+            return (
+              <Box key={`welcome-${msg._key}`} flexDirection="column">
+                <Welcome provider={config.provider} model={modelName} cwd={config.cwd} />
+                <Message message={msg} />
+              </Box>
+            );
+          }
+          return <Message key={`msg-${msg._key}`} message={msg} />;
+        }}
+      </Static>
 
-      {messages.map((msg, i) => (
-        <Message key={i} message={msg} />
-      ))}
+      {/* Dynamic: only this part redraws during streaming */}
+      <Box flexDirection="column">
+        {completedMessages.length === 0 && showWelcome && (
+          <Welcome provider={config.provider} model={modelName} cwd={config.cwd} />
+        )}
 
-      {isStreaming && !state.pendingApproval && <Spinner />}
+        {activeMessage && <Message message={activeMessage} isStreamingThis />}
 
-      {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
+        {isStreaming && !state.pendingApproval && <Spinner />}
 
-      {error && (
-        <Box marginLeft={2} marginBottom={1}>
-          <Box borderStyle="round" borderColor="red" paddingX={1}>
-            <Text color="red">Error: {error}</Text>
+        {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
+
+        {error && (
+          <Box marginLeft={2} marginBottom={1}>
+            <Box borderStyle="round" borderColor="red" paddingX={1}>
+              <Text color="red">Error: {error}</Text>
+            </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      <InputBar onSubmit={handleSubmit} isDisabled={isStreaming} />
+        <InputBar onSubmit={handleSubmit} isDisabled={isStreaming} />
 
-      <StatusBar provider={config.provider} model={modelName} tokenUsage={tokenUsage} />
-    </Box>
+        <StatusBar provider={config.provider} model={modelName} tokenUsage={tokenUsage} />
+      </Box>
+    </>
   );
 }

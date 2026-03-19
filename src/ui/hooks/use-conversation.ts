@@ -5,6 +5,8 @@ import { createBuiltinTools } from '../../core/tool-registry.js';
 import type { LanguageModel, ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
 import type { CoreMessage } from 'ai';
 
+const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
+
 export function useConversation(model: LanguageModel) {
   const { state, dispatch, config } = useAppContext();
 
@@ -32,6 +34,29 @@ export function useConversation(model: LanguageModel) {
     engineRef.current = new ConversationEngine(model, tools, config);
   }
 
+  // Text buffer for batching APPEND_CHUNK dispatches
+  const textBufferRef = useRef('');
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushTextBuffer = useCallback(() => {
+    if (textBufferRef.current) {
+      dispatchRef.current({ type: 'APPEND_CHUNK', text: textBufferRef.current });
+      textBufferRef.current = '';
+    }
+    flushTimerRef.current = null;
+  }, []);
+
+  const appendText = useCallback(
+    (text: string) => {
+      textBufferRef.current += text;
+      // Schedule a flush if one isn't already pending
+      if (!flushTimerRef.current) {
+        flushTimerRef.current = setTimeout(flushTextBuffer, FLUSH_INTERVAL_MS);
+      }
+    },
+    [flushTextBuffer],
+  );
+
   const sendMessage = useCallback(
     async (input: string) => {
       if (!engineRef.current || state.isStreaming) return;
@@ -44,10 +69,12 @@ export function useConversation(model: LanguageModel) {
         for await (const event of engineRef.current.sendMessage(input)) {
           switch (event.type) {
             case 'text-delta':
-              dispatch({ type: 'APPEND_CHUNK', text: event.text });
+              appendText(event.text);
               break;
 
             case 'tool-call':
+              // Flush any pending text before showing tool call
+              flushTextBuffer();
               dispatch({
                 type: 'ADD_TOOL_CALL',
                 toolCall: {
@@ -68,22 +95,26 @@ export function useConversation(model: LanguageModel) {
               break;
 
             case 'finish':
+              // Flush any remaining text before finishing
+              flushTextBuffer();
               dispatch({ type: 'FINISH_STREAMING', usage: event.usage });
               break;
 
             case 'error':
+              flushTextBuffer();
               dispatch({ type: 'SET_ERROR', error: event.error.message });
               break;
           }
         }
       } catch (error) {
+        flushTextBuffer();
         dispatch({
           type: 'SET_ERROR',
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     },
-    [state.isStreaming, dispatch, config],
+    [state.isStreaming, dispatch, appendText, flushTextBuffer],
   );
 
   const loadSession = useCallback(
