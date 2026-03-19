@@ -255,6 +255,10 @@ export class ConversationEngine {
     parts.push('- searchFiles: Search file contents with regex');
     parts.push('- bash: Execute shell commands');
     parts.push('- git: Git operations (status, diff, log, commit, push, branch, etc.)');
+    parts.push('- think: Private scratchpad for step-by-step reasoning');
+    parts.push('- fetchUrl: Make HTTP requests to URLs');
+    parts.push('- patch: Apply unified diffs to files');
+    parts.push('- todoManager: Track tasks within the session');
 
     return parts.join('\n');
   }

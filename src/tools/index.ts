@@ -5,3 +5,7 @@ export { listFiles } from './list-files.js';
 export { searchFiles } from './search-files.js';
 export { bash } from './bash.js';
 export { git, isGitReadOnly } from './git.js';
+export { think } from './think.js';
+export { fetchUrl } from './fetch.js';
+export { patch } from './patch.js';
+export { todoManager } from './todo-manager.js';

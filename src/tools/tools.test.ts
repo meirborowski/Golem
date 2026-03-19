@@ -9,6 +9,10 @@ import { listFiles } from './list-files.js';
 import { searchFiles } from './search-files.js';
 import { bash } from './bash.js';
 import { git, isGitReadOnly } from './git.js';
+import { think } from './think.js';
+import { fetchUrl } from './fetch.js';
+import { patch } from './patch.js';
+import { todoManager } from './todo-manager.js';
 import { execSync } from 'node:child_process';
 
 const TMP = join(tmpdir(), `golem-test-tools-${Date.now()}`);
@@ -319,5 +323,214 @@ describe('isGitReadOnly', () => {
     expect(isGitReadOnly('reset', '--hard')).toBe(false);
     expect(isGitReadOnly('checkout', 'feature')).toBe(false);
     expect(isGitReadOnly('tag', 'v1.0')).toBe(false);
+  });
+});
+
+// ── think ───────────────────────────────────────────────────────────────────
+
+describe('think tool', () => {
+  it('returns the thought as-is', async () => {
+    const tool = think();
+    const result = await tool.execute({ thought: 'Step 1: Read the file. Step 2: Edit it.' }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.thought).toBe('Step 1: Read the file. Step 2: Edit it.');
+  });
+});
+
+// ── fetchUrl ────────────────────────────────────────────────────────────────
+
+describe('fetchUrl tool', () => {
+  it('fetches a URL successfully', async () => {
+    const tool = fetchUrl();
+    const result = await tool.execute(
+      { url: 'https://httpbin.org/get', method: null, headers: null, body: null, timeout: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe(200);
+    expect(result.body).toBeTruthy();
+  });
+
+  it('handles POST with body', async () => {
+    const tool = fetchUrl();
+    const result = await tool.execute(
+      {
+        url: 'https://httpbin.org/post',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test: true }),
+        timeout: null,
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe(200);
+  });
+
+  it('returns error for invalid URL', async () => {
+    const tool = fetchUrl();
+    const result = await tool.execute(
+      { url: 'not-a-url', method: null, headers: null, body: null, timeout: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
+
+  it('handles timeout', async () => {
+    const tool = fetchUrl();
+    const result = await tool.execute(
+      { url: 'https://httpbin.org/delay/10', method: null, headers: null, body: null, timeout: 500 },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('timed out');
+  });
+});
+
+// ── patch ───────────────────────────────────────────────────────────────────
+
+describe('patch tool', () => {
+  it('applies a simple hunk', async () => {
+    writeFileSync(join(TMP, 'patch-test.txt'), 'line 1\nline 2\nline 3\n', 'utf-8');
+
+    const diff = [
+      '@@ -1,3 +1,3 @@',
+      ' line 1',
+      '-line 2',
+      '+line 2 modified',
+      ' line 3',
+    ].join('\n');
+
+    const tool = patch(TMP);
+    const result = await tool.execute({ filePath: 'patch-test.txt', diff }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.hunksApplied).toBe(1);
+
+    const content = readFileSync(join(TMP, 'patch-test.txt'), 'utf-8');
+    expect(content).toContain('line 2 modified');
+    expect(content).not.toContain('\nline 2\n');
+  });
+
+  it('applies additions', async () => {
+    writeFileSync(join(TMP, 'patch-add.txt'), 'a\nb\nc\n', 'utf-8');
+
+    const diff = [
+      '@@ -1,3 +1,4 @@',
+      ' a',
+      '+inserted',
+      ' b',
+      ' c',
+    ].join('\n');
+
+    const tool = patch(TMP);
+    const result = await tool.execute({ filePath: 'patch-add.txt', diff }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    const content = readFileSync(join(TMP, 'patch-add.txt'), 'utf-8');
+    expect(content).toContain('inserted');
+  });
+
+  it('returns error for non-existent file', async () => {
+    const tool = patch(TMP);
+    const result = await tool.execute({ filePath: 'nope.txt', diff: '@@ -1,1 +1,1 @@\n-a\n+b' }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('returns error for invalid diff', async () => {
+    writeFileSync(join(TMP, 'patch-bad.txt'), 'content\n', 'utf-8');
+
+    const tool = patch(TMP);
+    const result = await tool.execute({ filePath: 'patch-bad.txt', diff: 'not a diff' }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('No valid hunks');
+  });
+});
+
+// ── todoManager ─────────────────────────────────────────────────────────────
+
+describe('todoManager tool', () => {
+  // Use a unique cwd per test to isolate state
+  const TODO_CWD = join(TMP, 'todo-test');
+
+  beforeEach(() => mkdirSync(TODO_CWD, { recursive: true }));
+
+  it('adds a task', async () => {
+    const tool = todoManager(TODO_CWD);
+    const result = await tool.execute(
+      { action: 'add', task: 'Fix the bug', id: null, status: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Fix the bug');
+  });
+
+  it('lists tasks', async () => {
+    const tool = todoManager(TODO_CWD + '-list');
+    await tool.execute({ action: 'add', task: 'Task A', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'Task B', id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    const result = await tool.execute({ action: 'list', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.total).toBe(2);
+    expect(result.tasks).toContain('Task A');
+    expect(result.tasks).toContain('Task B');
+  });
+
+  it('updates task status', async () => {
+    const tool = todoManager(TODO_CWD + '-update');
+    const addResult = await tool.execute({ action: 'add', task: 'Do stuff', id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    // Extract the ID from the message
+    const idMatch = (addResult.message as string).match(/#(\d+)/);
+    const id = parseInt(idMatch![1], 10);
+
+    const result = await tool.execute({ action: 'update', task: null, id, status: 'done' }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.tasks).toContain('done');
+  });
+
+  it('removes a task', async () => {
+    const tool = todoManager(TODO_CWD + '-remove');
+    const addResult = await tool.execute({ action: 'add', task: 'Temp task', id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    const idMatch = (addResult.message as string).match(/#(\d+)/);
+    const id = parseInt(idMatch![1], 10);
+
+    const result = await tool.execute({ action: 'remove', task: null, id, status: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Removed');
+  });
+
+  it('clears all tasks', async () => {
+    const tool = todoManager(TODO_CWD + '-clear');
+    await tool.execute({ action: 'add', task: 'A', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'B', id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    const result = await tool.execute({ action: 'clear', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Cleared 2');
+  });
+
+  it('returns error for missing task on add', async () => {
+    const tool = todoManager(TODO_CWD + '-err');
+    const result = await tool.execute({ action: 'add', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('required');
   });
 });

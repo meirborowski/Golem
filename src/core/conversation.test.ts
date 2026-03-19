@@ -105,7 +105,7 @@ describe('ConversationEngine', () => {
   describe('context window truncation', () => {
     it('truncates old messages when context is exceeded', () => {
       // Use a tiny context window
-      const smallConfig: ResolvedConfig = { ...config, contextWindow: 600, maxTokens: 100 };
+      const smallConfig: ResolvedConfig = { ...config, contextWindow: 800, maxTokens: 100 };
       const smallEngine = new ConversationEngine(fakeModel, fakeTools, smallConfig);
 
       smallEngine.loadHistory([
