@@ -14,7 +14,7 @@ export class ConversationEngine {
   private totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   constructor(
-    private readonly model: LanguageModel,
+    private model: LanguageModel,
     private readonly tools: ToolSet,
     private readonly config: ResolvedConfig,
   ) {}
@@ -99,6 +99,10 @@ export class ConversationEngine {
       logger.error('Stream error', { error: err.message });
       yield { type: 'error', error: err };
     }
+  }
+
+  setModel(model: LanguageModel): void {
+    this.model = model;
   }
 
   getMessages(): CoreMessage[] {

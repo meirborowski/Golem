@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Text, Static, useApp } from 'ink';
-import type { LanguageModel } from '../../core/types.js';
 import { useAppContext } from '../context/app-context.js';
 import { useConversation } from '../hooks/use-conversation.js';
 import { saveSession, loadSession, listSessions } from '../../core/session.js';
+import { listProviders, getProvider } from '../../core/provider-registry.js';
 import { Welcome } from './welcome.js';
 import { Message } from './message.js';
 import { InputBar } from './input-bar.js';
@@ -15,23 +15,19 @@ const HELP_TEXT = [
   'Available commands:',
   '  /help              Show this help message',
   '  /clear             Clear conversation history',
-  '  /model             Show current model',
-  '  /provider          Show current provider',
+  '  /model [name]      Show or switch model (e.g. /model gpt-4o, /model openai/gpt-4o)',
+  '  /models            List available providers and their default models',
+  '  /provider [name]   Show or switch provider',
   '  /save              Save current session',
   '  /load [id]         Load a saved session (latest if no id)',
   '  /history           List saved sessions',
   '  /exit, /quit       Exit Golem',
 ].join('\n');
 
-interface ChatViewProps {
-  model: LanguageModel;
-  modelName: string;
-}
-
-export function ChatView({ model, modelName }: ChatViewProps) {
-  const { config, dispatch, state } = useAppContext();
+export function ChatView() {
+  const { config, dispatch, state, activeModelName, activeProvider, switchModel } = useAppContext();
   const { messages, isStreaming, error, tokenUsage, sendMessage, loadSession: loadIntoEngine } =
-    useConversation(model);
+    useConversation();
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { exit } = useApp();
@@ -68,21 +64,80 @@ export function ChatView({ model, modelName }: ChatViewProps) {
           setShowWelcome(true);
           return;
 
-        case 'model':
-          dispatch({
-            type: 'ADD_SYSTEM_MESSAGE',
-            content: arg
-              ? `Model switching is not yet supported. Current model: ${modelName}`
-              : `Current model: ${modelName}`,
-          });
-          return;
+        case 'model': {
+          if (!arg) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Current model: ${activeProvider}/${activeModelName}`,
+            });
+            return;
+          }
 
-        case 'provider':
-          dispatch({
-            type: 'ADD_SYSTEM_MESSAGE',
-            content: `Current provider: ${config.provider}`,
-          });
+          try {
+            // Support "provider/model" or just "model" (stays on current provider)
+            let newProvider = activeProvider;
+            let newModel = arg;
+
+            if (arg.includes('/')) {
+              const parts = arg.split('/');
+              newProvider = parts[0];
+              newModel = parts.slice(1).join('/');
+            }
+
+            switchModel(newProvider, newModel);
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Switched to ${newProvider}/${newModel}`,
+            });
+          } catch (err) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Failed to switch model: ${err instanceof Error ? err.message : String(err)}`,
+            });
+          }
           return;
+        }
+
+        case 'models': {
+          const providers = listProviders();
+          const lines = ['Available providers and default models:', ''];
+          for (const name of providers) {
+            const entry = getProvider(name);
+            if (entry) {
+              const active = name === activeProvider ? ' (active)' : '';
+              lines.push(`  ${name}${active} — default: ${entry.defaultModel}`);
+            }
+          }
+          lines.push('');
+          lines.push('Usage: /model <model-name> or /model <provider>/<model>');
+          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: lines.join('\n') });
+          return;
+        }
+
+        case 'provider': {
+          if (!arg) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Current provider: ${activeProvider}`,
+            });
+            return;
+          }
+
+          try {
+            switchModel(arg);
+            const entry = getProvider(arg);
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Switched to ${arg}/${entry?.defaultModel ?? 'unknown'}`,
+            });
+          } catch (err) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Failed to switch provider: ${err instanceof Error ? err.message : String(err)}`,
+            });
+          }
+          return;
+        }
 
         case 'save': {
           if (messages.length === 0) {
@@ -214,7 +269,7 @@ export function ChatView({ model, modelName }: ChatViewProps) {
           if (i === 0 && showWelcome) {
             return (
               <Box key={`welcome-${msg._key}`} flexDirection="column">
-                <Welcome provider={config.provider} model={modelName} cwd={config.cwd} />
+                <Welcome provider={activeProvider} model={activeModelName} cwd={config.cwd} />
                 <Message message={msg} />
               </Box>
             );
@@ -226,7 +281,7 @@ export function ChatView({ model, modelName }: ChatViewProps) {
       {/* Dynamic: only this part redraws during streaming */}
       <Box flexDirection="column">
         {completedMessages.length === 0 && showWelcome && (
-          <Welcome provider={config.provider} model={modelName} cwd={config.cwd} />
+          <Welcome provider={activeProvider} model={activeModelName} cwd={config.cwd} />
         )}
 
         {activeMessage && <Message message={activeMessage} isStreamingThis />}
@@ -245,7 +300,7 @@ export function ChatView({ model, modelName }: ChatViewProps) {
 
         <InputBar onSubmit={handleSubmit} isDisabled={isStreaming} />
 
-        <StatusBar provider={config.provider} model={modelName} tokenUsage={tokenUsage} />
+        <StatusBar provider={activeProvider} model={activeModelName} tokenUsage={tokenUsage} />
       </Box>
     </>
   );

@@ -82,17 +82,20 @@ describe('loadSession', () => {
 
 describe('listSessions', () => {
   it('lists saved sessions newest first', () => {
+    vi.useFakeTimers();
     saveSession(testMessages, testUsage, testConfig);
+    vi.advanceTimersByTime(2000); // Ensure different second in ID
     saveSession(
       [{ role: 'user', content: 'second session', timestamp: 5000 }],
       testUsage,
       testConfig,
     );
+    vi.useRealTimers();
 
     const sessions = listSessions();
     expect(sessions.length).toBeGreaterThanOrEqual(2);
     // Newest first
-    expect(sessions[0].updatedAt).toBeGreaterThanOrEqual(sessions[1].updatedAt);
+    expect(sessions[0].updatedAt).toBeGreaterThan(sessions[1].updatedAt);
   });
 
   it('returns empty array when no sessions exist', () => {
@@ -110,12 +113,15 @@ describe('listSessions', () => {
 
 describe('getLatestSessionId', () => {
   it('returns the latest session ID', () => {
+    vi.useFakeTimers();
     const s1 = saveSession(testMessages, testUsage, testConfig);
+    vi.advanceTimersByTime(2000); // Ensure different second in ID
     const s2 = saveSession(
       [{ role: 'user', content: 'newer', timestamp: 9000 }],
       testUsage,
       testConfig,
     );
+    vi.useRealTimers();
 
     const latest = getLatestSessionId();
     expect(latest).toBe(s2.id);

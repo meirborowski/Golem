@@ -1,14 +1,14 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools } from '../../core/tool-registry.js';
-import type { LanguageModel, ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
+import type { ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
 import type { CoreMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
 
-export function useConversation(model: LanguageModel) {
-  const { state, dispatch, config } = useAppContext();
+export function useConversation() {
+  const { state, dispatch, config, activeModel } = useAppContext();
 
   // Keep a stable ref to dispatch so the approval callback never goes stale
   const dispatchRef = useRef(dispatch);
@@ -31,8 +31,15 @@ export function useConversation(model: LanguageModel) {
   // Lazily create the engine with approval-wrapped tools
   if (!engineRef.current) {
     const tools = createBuiltinTools(config, approvalCallback);
-    engineRef.current = new ConversationEngine(model, tools, config);
+    engineRef.current = new ConversationEngine(activeModel, tools, config);
   }
+
+  // When the active model changes, update the engine
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setModel(activeModel);
+    }
+  }, [activeModel]);
 
   // Text buffer for batching APPEND_CHUNK dispatches
   const textBufferRef = useRef('');

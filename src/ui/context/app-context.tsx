@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import type { AppState, AppAction, ResolvedConfig, TokenUsage } from '../../core/types.js';
+import type { AppState, AppAction, ResolvedConfig, LanguageModel, TokenUsage } from '../../core/types.js';
 
 const initialState: AppState = {
   messages: [],
@@ -111,6 +111,10 @@ interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   config: ResolvedConfig;
+  activeModel: LanguageModel;
+  activeModelName: string;
+  activeProvider: string;
+  switchModel: (provider: string, model?: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -118,14 +122,26 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 export function AppContextProvider({
   children,
   config,
+  activeModel,
+  activeModelName,
+  activeProvider,
+  switchModel,
 }: {
   children: React.ReactNode;
   config: ResolvedConfig;
+  activeModel: LanguageModel;
+  activeModelName: string;
+  activeProvider: string;
+  switchModel: (provider: string, model?: string) => void;
 }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, config }}>{children}</AppContext.Provider>
+    <AppContext.Provider
+      value={{ state, dispatch, config, activeModel, activeModelName, activeProvider, switchModel }}
+    >
+      {children}
+    </AppContext.Provider>
   );
 }
 

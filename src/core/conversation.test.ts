@@ -82,6 +82,26 @@ describe('ConversationEngine', () => {
     });
   });
 
+  describe('setModel', () => {
+    it('swaps the model while preserving history', () => {
+      engine.loadHistory([
+        { role: 'user', content: 'hi' },
+        { role: 'assistant', content: 'hello' },
+      ]);
+
+      const newModel = { modelId: 'new-model', provider: 'test2', specificationVersion: 'v1' } as any;
+      engine.setModel(newModel);
+
+      // History should still be intact
+      expect(engine.getMessages()).toHaveLength(2);
+      expect(engine.getTokenUsage()).toEqual({
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      });
+    });
+  });
+
   describe('context window truncation', () => {
     it('truncates old messages when context is exceeded', () => {
       // Use a tiny context window
