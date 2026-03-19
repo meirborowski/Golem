@@ -1,8 +1,13 @@
 import { streamText } from 'ai';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { CoreMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
 import { detectProject } from '../utils/detect-project.js';
 import { logger } from '../utils/logger.js';
+
+const PROJECT_DOC_FILES = ['GOLEM.md', 'CLAUDE.md', 'README.md'];
+const MAX_DOC_CHARS = 8000; // Cap to avoid blowing the context window
 
 export class ConversationEngine {
   private messages: CoreMessage[] = [];
@@ -180,6 +185,25 @@ export class ConversationEngine {
     return dropped;
   }
 
+  private loadProjectDoc(): { file: string; content: string } | null {
+    for (const filename of PROJECT_DOC_FILES) {
+      const filePath = join(this.config.cwd, filename);
+      if (existsSync(filePath)) {
+        try {
+          let content = readFileSync(filePath, 'utf-8').trim();
+          if (content.length > MAX_DOC_CHARS) {
+            content = content.slice(0, MAX_DOC_CHARS) + '\n\n[... truncated]';
+          }
+          logger.debug(`Loaded project doc: ${filename} (${content.length} chars)`);
+          return { file: filename, content };
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    }
+    return null;
+  }
+
   private buildSystemPrompt(): string {
     const parts: string[] = [
       'You are Golem, an AI coding assistant running in the terminal.',
@@ -208,6 +232,14 @@ export class ConversationEngine {
       if (project.frameworks.length > 0) {
         parts.push(`Frameworks: ${project.frameworks.join(', ')}`);
       }
+    }
+
+    // Load project docs (GOLEM.md, CLAUDE.md, or README.md)
+    const doc = this.loadProjectDoc();
+    if (doc) {
+      parts.push('');
+      parts.push(`## Project Documentation (from ${doc.file})`);
+      parts.push(doc.content);
     }
 
     parts.push('');
