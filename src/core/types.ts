@@ -97,7 +97,9 @@ export type AppAction =
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'SET_PENDING_APPROVAL'; approval: PendingApproval | null }
-  | { type: 'START_STREAMING' };
+  | { type: 'START_STREAMING' }
+  | { type: 'CLEAR_MESSAGES' }
+  | { type: 'ADD_SYSTEM_MESSAGE'; content: string };
 
 // ── Re-export ───────────────────────────────────────────────────────────────
 

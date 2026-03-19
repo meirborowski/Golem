@@ -75,6 +75,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_PENDING_APPROVAL':
       return { ...state, pendingApproval: action.approval };
 
+    case 'CLEAR_MESSAGES':
+      return {
+        ...state,
+        messages: [],
+        error: null,
+        tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      };
+
+    case 'ADD_SYSTEM_MESSAGE':
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          { role: 'system', content: action.content, timestamp: Date.now() },
+        ],
+      };
+
     default:
       return state;
   }

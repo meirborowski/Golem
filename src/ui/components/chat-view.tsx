@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useApp } from 'ink';
 import type { LanguageModel } from '../../core/types.js';
 import type { ToolSet } from '../../core/tool-registry.js';
 import { useAppContext } from '../context/app-context.js';
@@ -10,6 +10,15 @@ import { InputBar } from './input-bar.js';
 import { Spinner } from './spinner.js';
 import { StatusBar } from './status-bar.js';
 
+const HELP_TEXT = [
+  'Available commands:',
+  '  /help              Show this help message',
+  '  /clear             Clear conversation history',
+  '  /model             Show current model',
+  '  /provider          Show current provider',
+  '  /exit, /quit       Exit Golem',
+].join('\n');
+
 interface ChatViewProps {
   model: LanguageModel;
   tools: ToolSet;
@@ -17,12 +26,59 @@ interface ChatViewProps {
 }
 
 export function ChatView({ model, tools, modelName }: ChatViewProps) {
-  const { config } = useAppContext();
+  const { config, dispatch } = useAppContext();
   const { messages, isStreaming, error, tokenUsage, sendMessage } = useConversation(model, tools);
   const [showWelcome, setShowWelcome] = useState(true);
+  const { exit } = useApp();
 
   const handleSubmit = (input: string) => {
     if (showWelcome) setShowWelcome(false);
+
+    // Slash command handling
+    if (input.startsWith('/')) {
+      const [cmd, ...rest] = input.slice(1).split(/\s+/);
+      const arg = rest.join(' ');
+
+      switch (cmd) {
+        case 'help':
+          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: HELP_TEXT });
+          return;
+
+        case 'exit':
+        case 'quit':
+          exit();
+          return;
+
+        case 'clear':
+          dispatch({ type: 'CLEAR_MESSAGES' });
+          setShowWelcome(true);
+          return;
+
+        case 'model':
+          dispatch({
+            type: 'ADD_SYSTEM_MESSAGE',
+            content: arg
+              ? `Model switching is not yet supported. Current model: ${modelName}`
+              : `Current model: ${modelName}`,
+          });
+          return;
+
+        case 'provider':
+          dispatch({
+            type: 'ADD_SYSTEM_MESSAGE',
+            content: `Current provider: ${config.provider}`,
+          });
+          return;
+
+        default:
+          dispatch({
+            type: 'ADD_SYSTEM_MESSAGE',
+            content: `Unknown command: /${cmd}. Type /help for available commands.`,
+          });
+          return;
+      }
+    }
+
     sendMessage(input);
   };
 
