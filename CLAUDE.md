@@ -19,14 +19,23 @@ src/utils/     — Shared helpers (file I/O, logging, project detection).
 
 ### Core Components
 
-- **ConversationEngine** (`src/core/conversation.ts`): Class that manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React.
+- **ConversationEngine** (`src/core/conversation.ts`): Class that manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages) and loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt.
 - **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
-- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK.
+- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) with a callback gate.
 - **Config** (`src/core/config.ts`): Layered resolution: defaults < global file < project file < env vars < CLI args.
+- **Session** (`src/core/session.ts`): Saves/loads/lists conversation sessions as JSON files in `~/.config/golem/sessions/`.
 
 ### State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`.
+Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
+
+### Rendering Performance
+
+- Completed messages use Ink's `<Static>` — rendered once, never redrawn.
+- Only the active streaming message + input bar redraws during streaming.
+- Text deltas are batched at ~30fps to reduce re-renders.
+- `Message` component is wrapped in `React.memo`.
+- Markdown rendering is deferred until streaming completes (plain text during streaming).
 
 ## Code Conventions
 
@@ -35,6 +44,7 @@ Single `useReducer` at the App level, distributed via React Context (`AppContext
 - **File naming**: kebab-case. React = `.tsx`, everything else = `.ts`.
 - **Imports**: Use `type` keyword for type-only imports. Always use `.js` extension in import paths (ESM requirement).
 - **Tools**: One file per tool in `src/tools/`. Export as named constant (factory function taking `cwd`).
+- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters (Anthropic API requires all properties in `required`). Handle defaults in `execute()`.
 - **Errors**: Tools return `{ success: false, error: string }` — never throw.
 - **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout (Ink owns the terminal).
 
@@ -51,10 +61,11 @@ export const myTool = (cwd: string) =>
     description: 'What this tool does',
     parameters: z.object({
       param1: z.string().describe('Description'),
+      optionalParam: z.union([z.number(), z.null()]).describe('Optional. Null defaults to 10.'),
     }),
-    execute: async ({ param1 }) => {
+    execute: async ({ param1, optionalParam: rawOpt }) => {
+      const optionalParam = rawOpt ?? 10;
       try {
-        // Implementation
         return { success: true, result: '...' };
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -65,6 +76,7 @@ export const myTool = (cwd: string) =>
 
 2. Add export to `src/tools/index.ts`
 3. Add to the tool map in `src/core/tool-registry.ts`
+4. Add tests in `src/tools/tools.test.ts`
 
 ## How to Add a New Provider
 
@@ -83,14 +95,38 @@ providers.set('myProvider', {
 });
 ```
 
+## Built-in Tools
+
+| Tool | File | Description |
+|------|------|-------------|
+| `readFile` | `src/tools/read-file.ts` | Read file contents with optional line range |
+| `writeFile` | `src/tools/write-file.ts` | Create or overwrite files |
+| `editFile` | `src/tools/edit-file.ts` | Find-and-replace text in files |
+| `listFiles` | `src/tools/list-files.ts` | Glob-based file discovery |
+| `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
+| `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
+
+## Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/clear` | Clear conversation history |
+| `/model` | Show current model |
+| `/provider` | Show current provider |
+| `/save` | Save current session |
+| `/load [id]` | Load a saved session (latest if no id) |
+| `/history` | List saved sessions |
+| `/exit`, `/quit` | Exit Golem |
+
 ## Build & Run
 
 ```bash
 npm install          # Install dependencies
 npm run dev          # Run in dev mode (tsx)
-npm run build        # Compile TypeScript → dist/
+npm run build        # Compile TypeScript -> dist/
 npm run start        # Run compiled version
-npm test             # Run vitest
+npm test             # Run vitest (71 tests)
 npm run typecheck    # Type-check without emitting
 npm run format       # Format with Prettier
 ```
@@ -106,16 +142,33 @@ golem --debug                      # Enable debug logging
 
 ## Config Files
 
-- Global: `~/.config/golem/config.json`
+- Global: `~/.config/golem/config.json` (or `%APPDATA%\golem\config.json` on Windows)
 - Project: `.golem/config.json` (walks up from cwd)
-- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, etc.
+- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.
+
+### Config Options
+
+```json
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "maxTokens": 4096,
+  "contextWindow": 128000,
+  "temperature": 0.7,
+  "providers": {
+    "ollama": { "baseUrl": "http://localhost:11434/api" }
+  }
+}
+```
 
 ## Testing
 
 - **Framework**: Vitest
+- **71 tests** across 7 test files
 - **Tools**: Test by calling `execute()` directly — they're pure functions
-- **ConversationEngine**: Mock `streamText` from the AI SDK
-- **UI**: Use `ink-testing-library` for component render tests
+- **ConversationEngine**: Test truncation, history, system prompt building
+- **Session**: Test save/load/list with temp directories
+- **Run**: `npm test`
 
 ## Dependencies
 
@@ -128,10 +181,8 @@ golem --debug                      # Enable debug logging
 | `ollama-ai-provider` | Ollama local model provider |
 | `zod` | Schema validation for tool inputs |
 | `ink` | React-based terminal UI |
-| `ink-text-input` | Text input component |
 | `ink-spinner` | Loading spinner |
+| `cli-highlight` | Syntax highlighting in code blocks |
+| `chalk` | Terminal colors |
 | `meow` | CLI argument parsing |
 | `fast-glob` | Glob pattern matching |
-| `ignore` | .gitignore parsing |
-| `cli-highlight` | Syntax highlighting |
-| `chalk` | Terminal colors |

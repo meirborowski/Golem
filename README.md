@@ -1,87 +1,115 @@
 # Golem CLI
 
-Golem CLI is a provider-agnostic command-line interface (CLI) AI coding assistant designed to help developers write, understand, and edit code efficiently. It leverages various AI models to provide insightful code suggestions and assistance directly within the terminal.
+A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and edit files, search codebases, and run commands — all from your terminal.
 
 ## Features
 
-- **Provider-Agnostic**: Supports multiple AI providers like Anthropic, Google, and OpenAI.
-- **Code Assistance**: Offers code completion, debugging tips, and refactoring suggestions.
-- **Terminal Integration**: Seamlessly integrates into your terminal environment.
-- **Customizable**: Easily extendable to support additional AI providers and custom functionalities.
+- **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
+- **Built-in tools**: Read, write, edit files, glob search, regex search, shell commands
+- **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks, streaming responses
+- **Session persistence**: Save and load conversations across sessions
+- **Context management**: Automatic truncation when conversations exceed the context window
+- **Bash approval**: Dangerous commands require user confirmation before execution
+- **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt
 
 ## Prerequisites
 
-- Node.js version 20.0.0 or higher
+- Node.js >= 20.0.0
+- An API key for at least one provider (or a local Ollama instance)
 
 ## Installation
 
-To install Golem CLI, run the following command:
-
 ```bash
-npm install -g golem-cli
+git clone <repository-url>
+cd golem-cli
+npm install
 ```
 
 ## Usage
 
-To start using Golem CLI, simply type the following command in your terminal:
+```bash
+# Development mode
+npm run dev
+
+# With a specific provider and model
+npm run dev -- --provider openai --model gpt-4o
+npm run dev -- --provider anthropic --model claude-sonnet-4-20250514
+npm run dev -- --provider ollama --model llama3.1
+
+# Debug logging
+npm run dev -- --debug
+```
+
+Set your API key as an environment variable:
 
 ```bash
-golem
+export ANTHROPIC_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
+export GOOGLE_GENERATIVE_AI_API_KEY=...
+```
+
+## Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/clear` | Clear conversation history |
+| `/save` | Save current session |
+| `/load [id]` | Load a saved session |
+| `/history` | List saved sessions |
+| `/model` | Show current model |
+| `/provider` | Show current provider |
+| `/exit` | Exit Golem |
+
+## Input Modes
+
+- **Single-line** (default): Type and press Enter to send
+- **Multi-line**: Press `Ctrl+J` to toggle. Enter adds newlines, `Ctrl+Enter` sends
+
+## Configuration
+
+Golem uses layered configuration (later overrides earlier):
+
+1. Built-in defaults
+2. Global config: `~/.config/golem/config.json`
+3. Project config: `.golem/config.json`
+4. Environment variables: `GOLEM_PROVIDER`, `GOLEM_MODEL`
+5. CLI flags: `--provider`, `--model`, `--debug`
+
+Example config:
+
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4o",
+  "maxTokens": 4096,
+  "contextWindow": 128000
+}
 ```
 
 ## Scripts
 
-- `dev`: Starts the development server.
-- `build`: Compiles the TypeScript code into JavaScript.
-- `start`: Runs the compiled JavaScript code.
-- `test`: Executes tests using Vitest.
-- `lint`: Checks the code formatting with Prettier.
-- `format`: Formats the code using Prettier.
-- `typecheck`: Checks TypeScript types without emitting files.
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Run in development mode (tsx) |
+| `npm run build` | Compile TypeScript to dist/ |
+| `npm start` | Run compiled version |
+| `npm test` | Run tests (71 tests via Vitest) |
+| `npm run typecheck` | Type-check without emitting |
+| `npm run format` | Format with Prettier |
 
-## Contributing
+## Architecture
 
-Contributions are welcome! Feel free to open issues or submit pull requests to enhance the functionality and usability of Golem CLI.
+```
+src/
+  core/          Config, conversation engine, providers, sessions, types
+  tools/         Built-in tools (read, write, edit, list, search, bash)
+  ui/            Ink components, hooks, context
+  utils/         File I/O, logging, project detection
+```
+
+See [CLAUDE.md](CLAUDE.md) for detailed architecture and contribution guide.
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Keywords
-
-- AI
-- CLI
-- Coding Assistant
-- LLM
-- Terminal
-
-## Dependencies
-
-- `@ai-sdk/anthropic`
-- `@ai-sdk/google`
-- `@ai-sdk/openai`
-- `ai`
-- `chalk`
-- `cli-highlight`
-- `fast-glob`
-- `ink`
-- `ink-spinner`
-- `ink-text-input`
-- `meow`
-- `ollama-ai-provider`
-- `react`
-- `zod`
-
-## Dev Dependencies
-
-- `@types/node`
-- `@types/react`
-- `ink-testing-library`
-- `prettier`
-- `tsx`
-- `typescript`
-- `vitest`
-
----
-
-Happy coding with Golem CLI!
+MIT
