@@ -8,6 +8,8 @@ import { editFile } from './edit-file.js';
 import { listFiles } from './list-files.js';
 import { searchFiles } from './search-files.js';
 import { bash } from './bash.js';
+import { git, isGitReadOnly } from './git.js';
+import { execSync } from 'node:child_process';
 
 const TMP = join(tmpdir(), `golem-test-tools-${Date.now()}`);
 
@@ -180,5 +182,142 @@ describe('bash tool', () => {
 
     expect(result.success).toBe(false);
     expect(result.exitCode).toBe(1);
+  });
+});
+
+// ── git ─────────────────────────────────────────────────────────────────────
+
+describe('git tool', () => {
+  const GIT_TMP = join(tmpdir(), `golem-test-git-${Date.now()}`);
+
+  beforeEach(() => {
+    mkdirSync(GIT_TMP, { recursive: true });
+    execSync('git init', { cwd: GIT_TMP, stdio: 'pipe' });
+    execSync('git config user.email "test@test.com"', { cwd: GIT_TMP, stdio: 'pipe' });
+    execSync('git config user.name "Test"', { cwd: GIT_TMP, stdio: 'pipe' });
+  });
+
+  afterEach(() => {
+    rmSync(GIT_TMP, { recursive: true, force: true });
+  });
+
+  it('runs git status', async () => {
+    const tool = git(GIT_TMP);
+    const result = await tool.execute({ subcommand: 'status', args: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('runs git log on a repo with commits', async () => {
+    writeFileSync(join(GIT_TMP, 'file.txt'), 'hello', 'utf-8');
+    execSync('git add .', { cwd: GIT_TMP, stdio: 'pipe' });
+    execSync('git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
+
+    const tool = git(GIT_TMP);
+    const result = await tool.execute({ subcommand: 'log', args: '--oneline -1' }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.stdout).toContain('init');
+  });
+
+  it('runs git diff', async () => {
+    writeFileSync(join(GIT_TMP, 'file.txt'), 'hello', 'utf-8');
+    execSync('git add .', { cwd: GIT_TMP, stdio: 'pipe' });
+    execSync('git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
+    writeFileSync(join(GIT_TMP, 'file.txt'), 'hello world', 'utf-8');
+
+    const tool = git(GIT_TMP);
+    const result = await tool.execute({ subcommand: 'diff', args: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.stdout).toContain('hello world');
+  });
+
+  it('runs git add and commit', async () => {
+    writeFileSync(join(GIT_TMP, 'new.txt'), 'content', 'utf-8');
+
+    const tool = git(GIT_TMP);
+    const addResult = await tool.execute({ subcommand: 'add', args: '.' }, { toolCallId: 'test', messages: [] });
+    expect(addResult.success).toBe(true);
+
+    const commitResult = await tool.execute({ subcommand: 'commit', args: '-m "test commit"' }, { toolCallId: 'test', messages: [] });
+    expect(commitResult.success).toBe(true);
+    expect(commitResult.stdout).toContain('test commit');
+  });
+
+  it('runs git branch', async () => {
+    writeFileSync(join(GIT_TMP, 'file.txt'), 'hello', 'utf-8');
+    execSync('git add . && git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
+
+    const tool = git(GIT_TMP);
+    const result = await tool.execute({ subcommand: 'branch', args: null }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.stdout.includes('main') || result.stdout.includes('master')).toBe(true);
+  });
+
+  it('returns error for non-git directory', async () => {
+    const nonGitDir = join(tmpdir(), `golem-test-nongit-${Date.now()}`);
+    mkdirSync(nonGitDir, { recursive: true });
+
+    try {
+      const tool = git(nonGitDir);
+      const result = await tool.execute({ subcommand: 'status', args: null }, { toolCallId: 'test', messages: [] });
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).not.toBe(0);
+    } finally {
+      rmSync(nonGitDir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ── isGitReadOnly ───────────────────────────────────────────────────────────
+
+describe('isGitReadOnly', () => {
+  it('treats status, diff, log, show, remote as read-only', () => {
+    expect(isGitReadOnly('status', null)).toBe(true);
+    expect(isGitReadOnly('diff', '--cached')).toBe(true);
+    expect(isGitReadOnly('log', '--oneline -5')).toBe(true);
+    expect(isGitReadOnly('show', 'HEAD')).toBe(true);
+    expect(isGitReadOnly('remote', '-v')).toBe(true);
+  });
+
+  it('treats branch with no args or list flags as read-only', () => {
+    expect(isGitReadOnly('branch', null)).toBe(true);
+    expect(isGitReadOnly('branch', '--list')).toBe(true);
+    expect(isGitReadOnly('branch', '-a')).toBe(true);
+    expect(isGitReadOnly('branch', '-r')).toBe(true);
+  });
+
+  it('treats branch with create/delete args as write', () => {
+    expect(isGitReadOnly('branch', 'new-feature')).toBe(false);
+    expect(isGitReadOnly('branch', '-d old-branch')).toBe(false);
+    expect(isGitReadOnly('branch', '-D old-branch')).toBe(false);
+  });
+
+  it('treats stash list/show as read-only', () => {
+    expect(isGitReadOnly('stash', null)).toBe(true);
+    expect(isGitReadOnly('stash', 'list')).toBe(true);
+    expect(isGitReadOnly('stash', 'show stash@{0}')).toBe(true);
+  });
+
+  it('treats stash push/pop/drop as write', () => {
+    expect(isGitReadOnly('stash', 'push')).toBe(false);
+    expect(isGitReadOnly('stash', 'pop')).toBe(false);
+    expect(isGitReadOnly('stash', 'drop')).toBe(false);
+  });
+
+  it('treats write operations as non-read-only', () => {
+    expect(isGitReadOnly('add', '.')).toBe(false);
+    expect(isGitReadOnly('commit', '-m "msg"')).toBe(false);
+    expect(isGitReadOnly('push', null)).toBe(false);
+    expect(isGitReadOnly('pull', null)).toBe(false);
+    expect(isGitReadOnly('merge', 'main')).toBe(false);
+    expect(isGitReadOnly('rebase', 'main')).toBe(false);
+    expect(isGitReadOnly('reset', '--hard')).toBe(false);
+    expect(isGitReadOnly('checkout', 'feature')).toBe(false);
+    expect(isGitReadOnly('tag', 'v1.0')).toBe(false);
   });
 });

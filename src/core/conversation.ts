@@ -254,6 +254,7 @@ export class ConversationEngine {
     parts.push('- listFiles: Find files matching glob patterns');
     parts.push('- searchFiles: Search file contents with regex');
     parts.push('- bash: Execute shell commands');
+    parts.push('- git: Git operations (status, diff, log, commit, push, branch, etc.)');
 
     return parts.join('\n');
   }

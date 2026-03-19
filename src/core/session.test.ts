@@ -144,7 +144,7 @@ describe('exportToMarkdown', () => {
     const md = exportToMarkdown(testMessages, 'openai', 'gpt-4o');
     expect(md).toContain('## 🧑 User');
     expect(md).toContain('hello');
-    expect(md).toContain('## 🤖 Assistant');
+    expect(md).toContain('## 🤖 Golem');
     expect(md).toContain('hi there');
   });
 
