@@ -13,6 +13,7 @@ export interface GolemConfig {
   model?: string;
   apiKey?: string;
   maxTokens?: number;
+  contextWindow?: number;
   temperature?: number;
   debug?: boolean;
   providers?: Record<string, ProviderConfig>;
@@ -23,6 +24,7 @@ export interface ResolvedConfig {
   model: string;
   apiKey?: string;
   maxTokens: number;
+  contextWindow: number;
   temperature: number;
   debug: boolean;
   cwd: string;

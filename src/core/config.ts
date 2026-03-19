@@ -7,6 +7,7 @@ const DEFAULTS: ResolvedConfig = {
   provider: 'anthropic',
   model: '',
   maxTokens: 4096,
+  contextWindow: 128_000, // sensible default; most modern models support 128k
   temperature: 0.7,
   debug: false,
   cwd: process.cwd(),
@@ -110,6 +111,7 @@ function mergeConfig(base: ResolvedConfig, override: Partial<GolemConfig>): Reso
     ...(override.model !== undefined && { model: override.model }),
     ...(override.apiKey !== undefined && { apiKey: override.apiKey }),
     ...(override.maxTokens !== undefined && { maxTokens: override.maxTokens }),
+    ...(override.contextWindow !== undefined && { contextWindow: override.contextWindow }),
     ...(override.temperature !== undefined && { temperature: override.temperature }),
     ...(override.debug !== undefined && { debug: override.debug }),
     providers: {

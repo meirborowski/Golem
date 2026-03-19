@@ -17,6 +17,12 @@ export class ConversationEngine {
   async *sendMessage(userMessage: string): AsyncGenerator<StreamEvent> {
     this.messages.push({ role: 'user', content: userMessage });
 
+    // Truncate context if it exceeds the window
+    const truncated = this.truncateMessages();
+    if (truncated > 0) {
+      logger.info(`Truncated ${truncated} old messages to fit context window`);
+    }
+
     logger.info('Sending message', { messageCount: this.messages.length });
 
     try {
@@ -108,6 +114,70 @@ export class ConversationEngine {
     if (usage) {
       this.totalUsage = { ...usage };
     }
+  }
+
+  /**
+   * Estimate token count for a message using a simple heuristic.
+   * ~4 chars per token is a reasonable approximation across models.
+   */
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
+  }
+
+  private estimateMessageTokens(msg: CoreMessage): number {
+    if (typeof msg.content === 'string') {
+      return this.estimateTokens(msg.content) + 4; // +4 for role/framing overhead
+    }
+    // For array content (tool calls etc), stringify to estimate
+    return this.estimateTokens(JSON.stringify(msg.content)) + 4;
+  }
+
+  /**
+   * Truncate old messages to fit within the context window.
+   * Keeps the system prompt budget, always preserves the last few messages,
+   * and drops oldest messages first. Returns number of messages dropped.
+   */
+  private truncateMessages(): number {
+    const contextWindow = this.config.contextWindow;
+    const systemPromptTokens = this.estimateTokens(this.buildSystemPrompt());
+    // Reserve tokens for: system prompt + max response + buffer
+    const reservedTokens = systemPromptTokens + this.config.maxTokens + 200;
+    const availableTokens = contextWindow - reservedTokens;
+
+    if (availableTokens <= 0) return 0;
+
+    // Calculate total tokens in messages
+    let totalTokens = 0;
+    for (const msg of this.messages) {
+      totalTokens += this.estimateMessageTokens(msg);
+    }
+
+    if (totalTokens <= availableTokens) return 0;
+
+    // Drop oldest messages (keeping at least the last 2: user + assistant pair)
+    const minKeep = 2;
+    let dropped = 0;
+
+    while (
+      this.messages.length > minKeep &&
+      totalTokens > availableTokens
+    ) {
+      const removed = this.messages.shift();
+      if (removed) {
+        totalTokens -= this.estimateMessageTokens(removed);
+        dropped++;
+      }
+    }
+
+    // If we dropped messages, prepend a summary note so the AI knows context was truncated
+    if (dropped > 0) {
+      this.messages.unshift({
+        role: 'user',
+        content: `[System note: ${dropped} earlier messages were truncated to fit the context window. The conversation continues from here.]`,
+      });
+    }
+
+    return dropped;
   }
 
   private buildSystemPrompt(): string {
