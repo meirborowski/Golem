@@ -134,6 +134,7 @@ export class ConversationEngine {
     parts.push('');
     parts.push('## Available Tools');
     parts.push('- readFile: Read file contents with optional line range');
+    parts.push('- writeFile: Create or overwrite files with given content');
     parts.push('- editFile: Apply find-and-replace edits to files');
     parts.push('- listFiles: Find files matching glob patterns');
     parts.push('- searchFiles: Search file contents with regex');

@@ -1,4 +1,4 @@
-import { readFile, editFile, listFiles, searchFiles, bash } from '../tools/index.js';
+import { readFile, writeFile, editFile, listFiles, searchFiles, bash } from '../tools/index.js';
 import type { ResolvedConfig } from './types.js';
 
 // Use Record<string, unknown> to avoid strict tool type mismatch across different schemas
@@ -10,6 +10,7 @@ export function createBuiltinTools(config: ResolvedConfig): ToolSet {
 
   return {
     readFile: readFile(cwd),
+    writeFile: writeFile(cwd),
     editFile: editFile(cwd),
     listFiles: listFiles(cwd),
     searchFiles: searchFiles(cwd),
