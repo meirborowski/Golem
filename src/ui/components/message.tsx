@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { ChatMessage } from '../../core/types.js';
 import { ToolCallDisplay } from './tool-call.js';
+import { Markdown } from './markdown.js';
 
 interface MessageProps {
   message: ChatMessage;
@@ -33,7 +34,11 @@ export function Message({ message }: MessageProps) {
       </Box>
       {content ? (
         <Box marginLeft={2} marginTop={0}>
-          <Text wrap="wrap">{content}</Text>
+          {role === 'assistant' ? (
+            <Markdown content={content} />
+          ) : (
+            <Text wrap="wrap">{content}</Text>
+          )}
         </Box>
       ) : null}
       {toolCalls?.map((tc) => (
