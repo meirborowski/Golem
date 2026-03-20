@@ -13,3 +13,4 @@ export { memory } from './memory.js';
 export { multiEdit } from './multi-edit.js';
 export { codeOutline, extractSymbols } from './code-outline.js';
 export { rename } from './rename.js';
+export { directoryTree } from './directory-tree.js';

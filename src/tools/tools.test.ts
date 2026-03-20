@@ -17,6 +17,7 @@ import { memory } from './memory.js';
 import { multiEdit } from './multi-edit.js';
 import { codeOutline, extractSymbols } from './code-outline.js';
 import { rename } from './rename.js';
+import { directoryTree } from './directory-tree.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -1201,5 +1202,107 @@ describe('rename tool', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('does not exist');
+  });
+});
+
+// ── directoryTree ─────────────────────────────────────────────────────────────
+
+describe('directoryTree tool', () => {
+  it('shows tree of a directory with nested folders and files', async () => {
+    mkdirSync(join(TMP, 'src', 'utils'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'index.ts'), 'export {}', 'utf-8');
+    writeFileSync(join(TMP, 'src', 'utils', 'helper.ts'), 'export {}', 'utf-8');
+    writeFileSync(join(TMP, 'README.md'), '# Hello', 'utf-8');
+
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: '.', maxDepth: null, includeFiles: null, maxEntries: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.tree).toContain('src/');
+    expect(result.tree).toContain('utils/');
+    expect(result.tree).toContain('index.ts');
+    expect(result.tree).toContain('helper.ts');
+    expect(result.tree).toContain('README.md');
+    expect(result.truncated).toBe(false);
+  });
+
+  it('respects maxDepth', async () => {
+    mkdirSync(join(TMP, 'a', 'b', 'c'), { recursive: true });
+    writeFileSync(join(TMP, 'a', 'b', 'c', 'deep.txt'), 'deep', 'utf-8');
+
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: '.', maxDepth: 1, includeFiles: null, maxEntries: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.tree).toContain('a/');
+    expect(result.tree).toContain('b/');
+    // depth 2 content should not appear
+    expect(result.tree).not.toContain('c/');
+    expect(result.tree).not.toContain('deep.txt');
+  });
+
+  it('shows only directories when includeFiles is false', async () => {
+    mkdirSync(join(TMP, 'src'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'app.ts'), 'code', 'utf-8');
+    writeFileSync(join(TMP, 'readme.md'), 'hi', 'utf-8');
+
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: '.', maxDepth: null, includeFiles: false, maxEntries: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.tree).toContain('src/');
+    expect(result.tree).not.toContain('app.ts');
+    expect(result.tree).not.toContain('readme.md');
+  });
+
+  it('truncates when maxEntries is exceeded', async () => {
+    for (let i = 0; i < 10; i++) {
+      writeFileSync(join(TMP, `file${i}.txt`), `content ${i}`, 'utf-8');
+    }
+
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: '.', maxDepth: null, includeFiles: null, maxEntries: 5 },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.truncated).toBe(true);
+    expect(result.totalEntries).toBe(5);
+    expect(result.tree).toContain('[truncated');
+  });
+
+  it('returns error for non-existent path', async () => {
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: 'nonexistent', maxDepth: null, includeFiles: null, maxEntries: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('handles empty directory', async () => {
+    mkdirSync(join(TMP, 'empty'), { recursive: true });
+
+    const tool = directoryTree(TMP);
+    const result = await tool.execute(
+      { path: 'empty', maxDepth: null, includeFiles: null, maxEntries: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.tree).toBe('empty/\n');
+    expect(result.totalEntries).toBe(0);
   });
 });
