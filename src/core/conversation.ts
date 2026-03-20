@@ -270,6 +270,7 @@ export class ConversationEngine {
     parts.push('- todoManager: Track tasks within the session');
     parts.push('- memory: Persistent key-value store across sessions');
     parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
+    parts.push('- codeOutline: Extract symbol outline (functions, classes, types) from a source file');
 
     return parts.join('\n');
   }

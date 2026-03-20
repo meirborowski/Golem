@@ -15,6 +15,7 @@ import { patch } from './patch.js';
 import { todoManager } from './todo-manager.js';
 import { memory } from './memory.js';
 import { multiEdit } from './multi-edit.js';
+import { codeOutline, extractSymbols } from './code-outline.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -744,5 +745,371 @@ describe('multiEdit tool', () => {
 
     const content = readFileSync(join(TMP, 'multi-seq.txt'), 'utf-8');
     expect(content).toContain('const y = 42;');
+  });
+});
+
+// ── codeOutline ──────────────────────────────────────────────────────────────
+
+describe('codeOutline tool', () => {
+  it('extracts TypeScript symbols', () => {
+    const code = [
+      'import { foo } from "bar";',
+      '',
+      'export interface Config {',
+      '  name: string;',
+      '}',
+      '',
+      'export type ID = string;',
+      '',
+      'export const DEFAULT_VALUE = 42;',
+      '',
+      'export async function loadData(id: string) {',
+      '  return null;',
+      '}',
+      '',
+      'class Internal {',
+      '  private x = 1;',
+      '}',
+      '',
+      'export enum Status {',
+      '  Active,',
+      '  Inactive,',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'test.ts');
+    expect(symbols).toHaveLength(6);
+
+    expect(symbols[0]).toEqual({ kind: 'interface', name: 'Config', line: 3, exported: true });
+    expect(symbols[1]).toEqual({ kind: 'type', name: 'ID', line: 7, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'variable', name: 'DEFAULT_VALUE', line: 9, exported: true });
+    expect(symbols[3]).toEqual({ kind: 'function', name: 'loadData', line: 11, exported: true });
+    expect(symbols[4]).toEqual({ kind: 'class', name: 'Internal', line: 15, exported: false });
+    expect(symbols[5]).toEqual({ kind: 'enum', name: 'Status', line: 19, exported: true });
+  });
+
+  it('extracts Python symbols', () => {
+    const code = [
+      'import os',
+      '',
+      'class MyClass:',
+      '    def __init__(self):',
+      '        pass',
+      '',
+      'def my_function():',
+      '    pass',
+      '',
+      'async def async_handler(request):',
+      '    pass',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'test.py');
+    expect(symbols).toHaveLength(4);
+
+    expect(symbols[0]).toEqual({ kind: 'class', name: 'MyClass', line: 3, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'function', name: '__init__', line: 4, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'function', name: 'my_function', line: 7, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'function', name: 'async_handler', line: 10, exported: false });
+  });
+
+  it('extracts Go symbols', () => {
+    const code = [
+      'package main',
+      '',
+      'type Config struct {',
+      '    Name string',
+      '}',
+      '',
+      'func NewConfig() *Config {',
+      '    return &Config{}',
+      '}',
+      '',
+      'func (c *Config) validate() error {',
+      '    return nil',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'main.go');
+    expect(symbols).toHaveLength(3);
+
+    expect(symbols[0]).toEqual({ kind: 'type', name: 'Config', line: 3, exported: true });
+    expect(symbols[1]).toEqual({ kind: 'function', name: 'NewConfig', line: 7, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'method', name: 'validate', line: 11, exported: false });
+  });
+
+  it('extracts Rust symbols', () => {
+    const code = [
+      'pub struct Server {',
+      '    port: u16,',
+      '}',
+      '',
+      'impl Server {',
+      '    pub fn new(port: u16) -> Self {',
+      '        Self { port }',
+      '    }',
+      '}',
+      '',
+      'pub trait Handler {',
+      '    fn handle(&self);',
+      '}',
+      '',
+      'pub enum Status {',
+      '    Ok,',
+      '    Error,',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'lib.rs');
+    expect(symbols).toHaveLength(6);
+
+    expect(symbols[0]).toEqual({ kind: 'struct', name: 'Server', line: 1, exported: true });
+    expect(symbols[1]).toEqual({ kind: 'impl', name: 'Server', line: 5, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'function', name: 'new', line: 6, exported: true });
+    expect(symbols[3]).toEqual({ kind: 'trait', name: 'Handler', line: 11, exported: true });
+    expect(symbols[4]).toEqual({ kind: 'function', name: 'handle', line: 12, exported: false });
+    expect(symbols[5]).toEqual({ kind: 'enum', name: 'Status', line: 15, exported: true });
+  });
+
+  it('returns empty for unsupported file types', () => {
+    const symbols = extractSymbols('some content', 'data.csv');
+    expect(symbols).toHaveLength(0);
+  });
+
+  it('tool returns error for non-existent file', async () => {
+    const tool = codeOutline(TMP);
+    const result = await tool.execute(
+      { filePath: 'nope.ts' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('tool returns outline for a real file', async () => {
+    const code = 'export function hello() {}\nconst x = 1;\n';
+    writeFileSync(join(TMP, 'outline-test.ts'), code, 'utf-8');
+
+    const tool = codeOutline(TMP);
+    const result = await tool.execute(
+      { filePath: 'outline-test.ts' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.language).toBe('typescript');
+    expect(result.symbolCount).toBe(2);
+    expect(result.outline).toContain('function hello');
+    expect(result.outline).toContain('[exported]');
+  });
+
+  it('extracts Ruby symbols', () => {
+    const code = [
+      'module Auth',
+      '  class User',
+      '    def initialize(name)',
+      '    end',
+      '',
+      '    def self.find(id)',
+      '    end',
+      '',
+      '    def valid?',
+      '    end',
+      '  end',
+      'end',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'user.rb');
+    expect(symbols).toHaveLength(5);
+    expect(symbols[0]).toEqual({ kind: 'module', name: 'Auth', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'class', name: 'User', line: 2, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'method', name: 'initialize', line: 3, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'method', name: 'find', line: 6, exported: false });
+    expect(symbols[4]).toEqual({ kind: 'method', name: 'valid?', line: 9, exported: false });
+  });
+
+  it('extracts PHP symbols', () => {
+    const code = [
+      '<?php',
+      'interface Loggable {',
+      '    public function log(): void;',
+      '}',
+      '',
+      'class UserController {',
+      '    public function index() {}',
+      '    private static function validate() {}',
+      '}',
+      '',
+      'function helper() {}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'app.php');
+    expect(symbols).toHaveLength(6);
+    expect(symbols[0]).toEqual({ kind: 'interface', name: 'Loggable', line: 2, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'method', name: 'log', line: 3, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'class', name: 'UserController', line: 6, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'method', name: 'index', line: 7, exported: true });
+    expect(symbols[4]).toEqual({ kind: 'method', name: 'validate', line: 8, exported: false });
+    expect(symbols[5]).toEqual({ kind: 'function', name: 'helper', line: 11, exported: false });
+  });
+
+  it('extracts C# symbols', () => {
+    const code = [
+      'namespace MyApp {',
+      'public class Service {',
+      '    public async Task<string> GetData() {}',
+      '    private void Validate() {}',
+      '}',
+      '',
+      'public interface IRepository {',
+      '}',
+      '',
+      'public enum Status {',
+      '    Active, Inactive',
+      '}',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'Service.cs');
+    expect(symbols).toHaveLength(6);
+    expect(symbols[0]).toEqual({ kind: 'namespace', name: 'MyApp', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'class', name: 'Service', line: 2, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'method', name: 'GetData', line: 3, exported: true });
+    expect(symbols[3]).toEqual({ kind: 'method', name: 'Validate', line: 4, exported: false });
+    expect(symbols[4]).toEqual({ kind: 'interface', name: 'IRepository', line: 7, exported: true });
+    expect(symbols[5]).toEqual({ kind: 'enum', name: 'Status', line: 10, exported: true });
+  });
+
+  it('extracts Kotlin symbols', () => {
+    const code = [
+      'data class User(val name: String)',
+      '',
+      'interface Repository {',
+      '}',
+      '',
+      'object Singleton {',
+      '}',
+      '',
+      'suspend fun fetchData(): String {',
+      '    return ""',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'Main.kt');
+    expect(symbols).toHaveLength(4);
+    expect(symbols[0]).toEqual({ kind: 'class', name: 'User', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'interface', name: 'Repository', line: 3, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'object', name: 'Singleton', line: 6, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'function', name: 'fetchData', line: 9, exported: false });
+  });
+
+  it('extracts Swift symbols', () => {
+    const code = [
+      'public class ViewController {',
+      '    public func viewDidLoad() {}',
+      '    private func setup() {}',
+      '}',
+      '',
+      'public struct Config {',
+      '}',
+      '',
+      'public protocol Drawable {',
+      '}',
+      '',
+      'extension String {',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'App.swift');
+    expect(symbols).toHaveLength(6);
+    expect(symbols[0]).toEqual({ kind: 'class', name: 'ViewController', line: 1, exported: true });
+    expect(symbols[1]).toEqual({ kind: 'function', name: 'viewDidLoad', line: 2, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'function', name: 'setup', line: 3, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'struct', name: 'Config', line: 6, exported: true });
+    expect(symbols[4]).toEqual({ kind: 'protocol', name: 'Drawable', line: 9, exported: true });
+    expect(symbols[5]).toEqual({ kind: 'extension', name: 'String', line: 12, exported: false });
+  });
+
+  it('extracts Elixir symbols', () => {
+    const code = [
+      'defmodule MyApp.Router do',
+      '  def handle(request) do',
+      '    :ok',
+      '  end',
+      '',
+      '  defp validate(data) do',
+      '    :ok',
+      '  end',
+      '',
+      '  defmacro route(path) do',
+      '  end',
+      'end',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'router.ex');
+    expect(symbols).toHaveLength(4);
+    expect(symbols[0]).toEqual({ kind: 'module', name: 'MyApp.Router', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'function', name: 'handle', line: 2, exported: true });
+    expect(symbols[2]).toEqual({ kind: 'function', name: 'validate', line: 6, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'macro', name: 'route', line: 10, exported: true });
+  });
+
+  it('extracts Shell symbols', () => {
+    const code = [
+      '#!/bin/bash',
+      '',
+      'function setup() {',
+      '  echo "setting up"',
+      '}',
+      '',
+      'cleanup() {',
+      '  echo "cleaning"',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'deploy.sh');
+    expect(symbols).toHaveLength(2);
+    expect(symbols[0]).toEqual({ kind: 'function', name: 'setup', line: 3, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'function', name: 'cleanup', line: 7, exported: false });
+  });
+
+  it('extracts Lua symbols', () => {
+    const code = [
+      'local function helper()',
+      '  return 1',
+      'end',
+      '',
+      'function M.init()',
+      '  return true',
+      'end',
+      '',
+      'local callback = function()',
+      'end',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'init.lua');
+    expect(symbols).toHaveLength(3);
+    expect(symbols[0]).toEqual({ kind: 'function', name: 'helper', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'function', name: 'M.init', line: 5, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'function', name: 'callback', line: 9, exported: false });
+  });
+
+  it('extracts Scala symbols', () => {
+    const code = [
+      'sealed trait Animal',
+      '',
+      'case class Dog(name: String) extends Animal',
+      '',
+      'object Main {',
+      '  def run(): Unit = {}',
+      '}',
+    ].join('\n');
+
+    const symbols = extractSymbols(code, 'Main.scala');
+    expect(symbols).toHaveLength(4);
+    expect(symbols[0]).toEqual({ kind: 'trait', name: 'Animal', line: 1, exported: false });
+    expect(symbols[1]).toEqual({ kind: 'class', name: 'Dog', line: 3, exported: false });
+    expect(symbols[2]).toEqual({ kind: 'object', name: 'Main', line: 5, exported: false });
+    expect(symbols[3]).toEqual({ kind: 'function', name: 'run', line: 6, exported: false });
   });
 });

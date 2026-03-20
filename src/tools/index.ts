@@ -11,3 +11,4 @@ export { patch } from './patch.js';
 export { todoManager } from './todo-manager.js';
 export { memory } from './memory.js';
 export { multiEdit } from './multi-edit.js';
+export { codeOutline, extractSymbols } from './code-outline.js';

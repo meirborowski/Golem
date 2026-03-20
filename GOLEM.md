@@ -186,9 +186,3 @@ golem --debug                      # Enable debug logging
 | `chalk` | Terminal colors |
 | `meow` | CLI argument parsing |
 | `fast-glob` | Glob pattern matching |
-
-## Remembered Context
-
-Global memory:
-  user-name: meir
-  user-preference-address: Always address the user by name when referring to them. User name: meir.
