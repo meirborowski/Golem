@@ -14,6 +14,7 @@ import { fetchUrl } from './fetch.js';
 import { patch } from './patch.js';
 import { todoManager } from './todo-manager.js';
 import { memory } from './memory.js';
+import { multiEdit } from './multi-edit.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -643,5 +644,105 @@ describe('memory tool', () => {
     );
     expect(result.success).toBe(false);
     expect(result.error).toContain('not found');
+  });
+});
+
+// ── multiEdit ────────────────────────────────────────────────────────────────
+
+describe('multiEdit tool', () => {
+  it('applies multiple edits to a file', async () => {
+    writeFileSync(join(TMP, 'multi.ts'), 'import { foo } from "bar";\n\nfunction hello() {\n  return "world";\n}\n', 'utf-8');
+    const tool = multiEdit(TMP);
+    const result = await tool.execute(
+      {
+        filePath: 'multi.ts',
+        edits: [
+          { oldText: 'import { foo } from "bar";', newText: 'import { foo, baz } from "bar";' },
+          { oldText: 'return "world";', newText: 'return "universe";' },
+        ],
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.editsApplied).toBe(2);
+
+    const content = readFileSync(join(TMP, 'multi.ts'), 'utf-8');
+    expect(content).toContain('import { foo, baz } from "bar";');
+    expect(content).toContain('return "universe";');
+  });
+
+  it('leaves file unchanged when an edit fails', async () => {
+    const original = 'line one\nline two\nline three\n';
+    writeFileSync(join(TMP, 'multi-fail.txt'), original, 'utf-8');
+    const tool = multiEdit(TMP);
+    const result = await tool.execute(
+      {
+        filePath: 'multi-fail.txt',
+        edits: [
+          { oldText: 'line one', newText: 'LINE ONE' },
+          { oldText: 'does not exist', newText: 'oops' },
+        ],
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Edit 2/2');
+    expect(result.error).toContain('not found');
+
+    // File should be unchanged
+    const content = readFileSync(join(TMP, 'multi-fail.txt'), 'utf-8');
+    expect(content).toBe(original);
+  });
+
+  it('rejects ambiguous matches', async () => {
+    writeFileSync(join(TMP, 'multi-ambig.txt'), 'aaa\nbbb\naaa\n', 'utf-8');
+    const tool = multiEdit(TMP);
+    const result = await tool.execute(
+      {
+        filePath: 'multi-ambig.txt',
+        edits: [{ oldText: 'aaa', newText: 'ccc' }],
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('2 occurrences');
+  });
+
+  it('returns error for non-existent file', async () => {
+    const tool = multiEdit(TMP);
+    const result = await tool.execute(
+      {
+        filePath: 'nope.txt',
+        edits: [{ oldText: 'a', newText: 'b' }],
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('applies sequential edits where later edits depend on earlier ones', async () => {
+    writeFileSync(join(TMP, 'multi-seq.txt'), 'const x = 1;\n', 'utf-8');
+    const tool = multiEdit(TMP);
+    const result = await tool.execute(
+      {
+        filePath: 'multi-seq.txt',
+        edits: [
+          { oldText: 'const x = 1;', newText: 'const x = 1;\nconst y = 2;' },
+          { oldText: 'const y = 2;', newText: 'const y = 42;' },
+        ],
+      },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.editsApplied).toBe(2);
+
+    const content = readFileSync(join(TMP, 'multi-seq.txt'), 'utf-8');
+    expect(content).toContain('const y = 42;');
   });
 });

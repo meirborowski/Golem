@@ -269,6 +269,7 @@ export class ConversationEngine {
     parts.push('- patch: Apply unified diffs to files');
     parts.push('- todoManager: Track tasks within the session');
     parts.push('- memory: Persistent key-value store across sessions');
+    parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
 
     return parts.join('\n');
   }

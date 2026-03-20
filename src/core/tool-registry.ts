@@ -1,4 +1,4 @@
-import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory } from '../tools/index.js';
+import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit } from '../tools/index.js';
 import type { ResolvedConfig, ApprovalCallback } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,6 +82,7 @@ export function createBuiltinTools(
     patch: patch(cwd),
     todoManager: todoManager(cwd),
     memory: memory(cwd),
+    multiEdit: multiEdit(cwd),
   };
 
   if (onApprovalNeeded) {

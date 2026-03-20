@@ -12,6 +12,10 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 - **Bash approval**: Dangerous commands require user confirmation before execution
 - **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt
 
+## Project Guide
+
+If you’re using Golem inside this repo, read [GOLEM.md](GOLEM.md) for the project-specific architecture, conventions, and contribution notes.
+
 ## Prerequisites
 
 - Node.js >= 20.0.0
