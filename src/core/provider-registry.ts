@@ -13,8 +13,10 @@ providers.set('anthropic', {
   defaultModel: 'claude-sonnet-4-20250514',
   envKeyName: 'ANTHROPIC_API_KEY',
   createModel: (modelId: string, options?: ProviderConfig): LanguageModel => {
+    const key = options?.apiKey || process.env['ANTHROPIC_API_KEY'];
+    if (!key) throw new Error('Anthropic API key not found. Set ANTHROPIC_API_KEY or pass it via config.');
     const provider = createAnthropic({
-      apiKey: options?.apiKey || process.env['ANTHROPIC_API_KEY'],
+      apiKey: key,
       ...(options?.baseUrl && { baseURL: options.baseUrl }),
     });
     return provider(modelId);
@@ -26,8 +28,10 @@ providers.set('openai', {
   defaultModel: 'gpt-4o',
   envKeyName: 'OPENAI_API_KEY',
   createModel: (modelId: string, options?: ProviderConfig): LanguageModel => {
+    const key = options?.apiKey || process.env['OPENAI_API_KEY'];
+    if (!key) throw new Error('OpenAI API key not found. Set OPENAI_API_KEY or pass it via config.');
     const provider = createOpenAI({
-      apiKey: options?.apiKey || process.env['OPENAI_API_KEY'],
+      apiKey: key,
       ...(options?.baseUrl && { baseURL: options.baseUrl }),
     });
     return provider(modelId);
@@ -39,8 +43,10 @@ providers.set('google', {
   defaultModel: 'gemini-2.0-flash',
   envKeyName: 'GOOGLE_GENERATIVE_AI_API_KEY',
   createModel: (modelId: string, options?: ProviderConfig): LanguageModel => {
+    const key = options?.apiKey || process.env['GOOGLE_GENERATIVE_AI_API_KEY'];
+    if (!key) throw new Error('Google AI API key not found. Set GOOGLE_GENERATIVE_AI_API_KEY or pass it via config.');
     const provider = createGoogleGenerativeAI({
-      apiKey: options?.apiKey || process.env['GOOGLE_GENERATIVE_AI_API_KEY'],
+      apiKey: key,
       ...(options?.baseUrl && { baseURL: options.baseUrl }),
     });
     return provider(modelId);
@@ -80,10 +86,10 @@ export function resolveModel(config: ResolvedConfig): LanguageModel {
   const providerConfig = config.providers[config.provider];
 
   // Resolve API key: CLI config > provider config > env
-  const apiKey = config.apiKey || providerConfig?.apiKey || undefined;
+  const apiKey = config.apiKey || providerConfig?.apiKey;
 
   return entry.createModel(modelId, {
-    apiKey,
+    ...(apiKey && { apiKey }),
     baseUrl: providerConfig?.baseUrl,
   });
 }

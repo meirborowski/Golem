@@ -16,6 +16,7 @@ const cli = meow(
   Options
     --provider, -p   LLM provider (${listProviders().join(', ')})
     --model, -m      Model identifier
+    --api-key, -k    API key for the provider
     --debug          Enable debug logging
     --version, -v    Show version
     --help, -h       Show help
@@ -30,6 +31,7 @@ const cli = meow(
     flags: {
       provider: { type: 'string', shortFlag: 'p' },
       model: { type: 'string', shortFlag: 'm' },
+      apiKey: { type: 'string', shortFlag: 'k' },
       debug: { type: 'boolean', default: false },
     },
   },
@@ -39,6 +41,7 @@ const cli = meow(
 const config = resolveConfig({
   provider: cli.flags.provider,
   model: cli.flags.model,
+  apiKey: cli.flags.apiKey,
   debug: cli.flags.debug,
 });
 

@@ -69,6 +69,7 @@ function loadEnvConfig(): Partial<GolemConfig> {
 export interface CliArgs {
   provider?: string;
   model?: string;
+  apiKey?: string;
   debug?: boolean;
 }
 
@@ -96,6 +97,7 @@ export function resolveConfig(cliArgs: CliArgs = {}): ResolvedConfig {
   // Layer 5: CLI arguments (highest priority)
   if (cliArgs.provider) config.provider = cliArgs.provider;
   if (cliArgs.model) config.model = cliArgs.model;
+  if (cliArgs.apiKey) config.apiKey = cliArgs.apiKey;
   if (cliArgs.debug !== undefined) config.debug = cliArgs.debug;
 
   // Resolve cwd
