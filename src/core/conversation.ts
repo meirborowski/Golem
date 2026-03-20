@@ -271,6 +271,7 @@ export class ConversationEngine {
     parts.push('- memory: Persistent key-value store across sessions');
     parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
     parts.push('- codeOutline: Extract symbol outline (functions, classes, types) from a source file');
+    parts.push('- rename: Rename or move files and directories');
 
     return parts.join('\n');
   }

@@ -16,6 +16,7 @@ import { todoManager } from './todo-manager.js';
 import { memory } from './memory.js';
 import { multiEdit } from './multi-edit.js';
 import { codeOutline, extractSymbols } from './code-outline.js';
+import { rename } from './rename.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -1111,5 +1112,94 @@ describe('codeOutline tool', () => {
     expect(symbols[1]).toEqual({ kind: 'class', name: 'Dog', line: 3, exported: false });
     expect(symbols[2]).toEqual({ kind: 'object', name: 'Main', line: 5, exported: false });
     expect(symbols[3]).toEqual({ kind: 'function', name: 'run', line: 6, exported: false });
+  });
+});
+
+// ── rename ───────────────────────────────────────────────────────────────────
+
+describe('rename tool', () => {
+  it('renames a file', async () => {
+    writeFileSync(join(TMP, 'old-name.txt'), 'content', 'utf-8');
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'old-name.txt', newPath: 'new-name.txt' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(TMP, 'old-name.txt'))).toBe(false);
+    expect(existsSync(join(TMP, 'new-name.txt'))).toBe(true);
+    expect(readFileSync(join(TMP, 'new-name.txt'), 'utf-8')).toBe('content');
+  });
+
+  it('moves a file to a subdirectory', async () => {
+    writeFileSync(join(TMP, 'moveme.txt'), 'data', 'utf-8');
+    mkdirSync(join(TMP, 'subdir'), { recursive: true });
+
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'moveme.txt', newPath: 'subdir/moveme.txt' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(TMP, 'moveme.txt'))).toBe(false);
+    expect(existsSync(join(TMP, 'subdir', 'moveme.txt'))).toBe(true);
+  });
+
+  it('renames a directory', async () => {
+    mkdirSync(join(TMP, 'old-dir'), { recursive: true });
+    writeFileSync(join(TMP, 'old-dir', 'file.txt'), 'inside', 'utf-8');
+
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'old-dir', newPath: 'new-dir' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(TMP, 'old-dir'))).toBe(false);
+    expect(readFileSync(join(TMP, 'new-dir', 'file.txt'), 'utf-8')).toBe('inside');
+  });
+
+  it('returns error for non-existent source', async () => {
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'nope.txt', newPath: 'dest.txt' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('returns error if destination already exists', async () => {
+    writeFileSync(join(TMP, 'a.txt'), 'a', 'utf-8');
+    writeFileSync(join(TMP, 'b.txt'), 'b', 'utf-8');
+
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'a.txt', newPath: 'b.txt' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('already exists');
+    // Both files should be untouched
+    expect(readFileSync(join(TMP, 'a.txt'), 'utf-8')).toBe('a');
+    expect(readFileSync(join(TMP, 'b.txt'), 'utf-8')).toBe('b');
+  });
+
+  it('returns error if destination directory does not exist', async () => {
+    writeFileSync(join(TMP, 'file.txt'), 'data', 'utf-8');
+
+    const tool = rename(TMP);
+    const result = await tool.execute(
+      { oldPath: 'file.txt', newPath: 'nonexistent/file.txt' },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('does not exist');
   });
 });
