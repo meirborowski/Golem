@@ -1,14 +1,27 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { ConversationEngine } from './conversation.js';
 import type { ResolvedConfig, TokenUsage } from './types.js';
 
 const streamTextMock = vi.hoisted(() => vi.fn());
+const detectProjectMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ai', () => ({
   streamText: streamTextMock,
   stepCountIs: vi.fn(() => ({ type: 'stepCountIs' })),
 }));
+
+vi.mock('../utils/detect-project.js', () => ({
+  detectProject: detectProjectMock,
+}));
+
+const makeTempDir = (suffix: string): string => {
+  const dir = join(tmpdir(), `golem-conversation-${suffix}-${Date.now()}`);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+};
 
 // Fake model — we won't actually call a real provider in these tests
 const fakeModel = { modelId: 'test', provider: 'test', specificationVersion: 'v1' };
@@ -21,7 +34,7 @@ const config: ResolvedConfig = {
   contextWindow: 2000,
   temperature: 0.7,
   debug: false,
-  cwd: tmpdir(), // Use tmpdir to avoid loading project docs
+  cwd: tmpdir(),
   providers: {},
 };
 
@@ -30,7 +43,12 @@ describe('ConversationEngine', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    detectProjectMock.mockReturnValue(null);
     engine = new ConversationEngine(fakeModel as never, fakeTools, config);
+  });
+
+  afterEach(() => {
+    // no-op
   });
 
   describe('initial state', () => {
@@ -161,6 +179,51 @@ describe('ConversationEngine', () => {
         value: { type: 'finish', usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } },
         done: false,
       });
+    });
+  });
+
+  describe('system prompt construction', () => {
+    it('includes project info, docs, and remembered context', async () => {
+      const cwd = makeTempDir('system-prompt');
+      writeFileSync(
+        join(cwd, 'GOLEM.md'),
+        'Project instructions from GOLEM.md\nThis content should be included.',
+        'utf-8',
+      );
+      mkdirSync(join(cwd, '.golem'), { recursive: true });
+      writeFileSync(join(cwd, '.golem', 'memory.json'), JSON.stringify({ style: 'be concise' }), 'utf-8');
+
+      detectProjectMock.mockReturnValue({
+        type: 'node',
+        language: 'JavaScript/TypeScript',
+        name: 'demo-app',
+        frameworks: ['React'],
+      });
+
+      const promptConfig: ResolvedConfig = { ...config, cwd };
+      const promptEngine = new ConversationEngine(fakeModel as never, fakeTools, promptConfig);
+
+      streamTextMock.mockReturnValue({
+        fullStream: (async function* () {
+          yield { type: 'finish', totalUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
+        })(),
+        response: Promise.resolve({ messages: [] }),
+      });
+
+      const gen = promptEngine.sendMessage('hello');
+      await gen.next();
+      await gen.next();
+
+      const systemArg = streamTextMock.mock.calls[0]?.[0]?.system as string | undefined;
+      expect(systemArg).toContain('Type: node (JavaScript/TypeScript)');
+      expect(systemArg).toContain('Name: demo-app');
+      expect(systemArg).toContain('Frameworks: React');
+      expect(systemArg).toContain('## Project Documentation (from GOLEM.md)');
+      expect(systemArg).toContain('Project instructions from GOLEM.md');
+      expect(systemArg).toContain('## Remembered Context');
+      expect(systemArg).toContain('style: be concise');
+
+      rmSync(cwd, { recursive: true, force: true });
     });
   });
 
