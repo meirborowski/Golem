@@ -5,16 +5,16 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 ## Features
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
-- **Built-in tools**: Read, write, edit files, glob search, regex search, shell commands
+- **Built-in tools**: Read, write, edit files, glob search, regex search, shell commands, git, memory, todo tracking, multi-edit, patching, renaming, directory trees, code outline, diffing, web search, fetch, and more
 - **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks, streaming responses
 - **Session persistence**: Save and load conversations across sessions
 - **Context management**: Automatic truncation when conversations exceed the context window
-- **Bash approval**: Dangerous commands require user confirmation before execution
-- **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt
+- **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt and includes remembered context
+- **Approval gating**: Dangerous shell commands and non-read-only git operations require user confirmation
 
 ## Project Guide
 
-If you’re using Golem inside this repo, read [GOLEM.md](GOLEM.md) for the project-specific architecture, conventions, and contribution notes.
+If you’re using Golem inside this repo, read [GOLEM.md](GOLEM.md) for the project-specific architecture, conventions, and agent rules.
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ export GOOGLE_GENERATIVE_AI_API_KEY=...
 | `/history` | List saved sessions |
 | `/model` | Show current model |
 | `/provider` | Show current provider |
-| `/exit` | Exit Golem |
+| `/exit`, `/quit` | Exit Golem |
 
 ## Input Modes
 
@@ -77,7 +77,7 @@ Golem uses layered configuration (later overrides earlier):
 1. Built-in defaults
 2. Global config: `~/.config/golem/config.json`
 3. Project config: `.golem/config.json`
-4. Environment variables: `GOLEM_PROVIDER`, `GOLEM_MODEL`
+4. Environment variables: `GOLEM_PROVIDER`, `GOLEM_MODEL`, provider API keys
 5. CLI flags: `--provider`, `--model`, `--debug`
 
 Example config:
@@ -87,7 +87,13 @@ Example config:
   "provider": "openai",
   "model": "gpt-4o",
   "maxTokens": 4096,
-  "contextWindow": 128000
+  "contextWindow": 128000,
+  "temperature": 0.7,
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/api"
+    }
+  }
 }
 ```
 
@@ -98,16 +104,16 @@ Example config:
 | `npm run dev` | Run in development mode (tsx) |
 | `npm run build` | Compile TypeScript to dist/ |
 | `npm start` | Run compiled version |
-| `npm test` | Run tests (71 tests via Vitest) |
+| `npm test` | Run tests via Vitest |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run format` | Format with Prettier |
 
 ## Architecture
 
-```
+```text
 src/
   core/          Config, conversation engine, providers, sessions, types
-  tools/         Built-in tools (read, write, edit, list, search, bash)
+  tools/         Built-in tools and tool registry
   ui/            Ink components, hooks, context
   utils/         File I/O, logging, project detection
 ```
