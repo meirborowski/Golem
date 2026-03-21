@@ -109,7 +109,18 @@ providers.set('myProvider', {
 | `listFiles` | `src/tools/list-files.ts` | Glob-based file discovery |
 | `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
 | `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
+| `git` | `src/tools/git.ts` | Git operations (status, diff, log, commit, push, branch, etc.) |
+| `think` | `src/tools/think.ts` | Private scratchpad for step-by-step reasoning |
+| `fetchUrl` | `src/tools/fetch.ts` | Make HTTP requests to URLs |
+| `patch` | `src/tools/patch.ts` | Apply unified diffs to files |
+| `todoManager` | `src/tools/todo-manager.ts` | Track tasks within the session |
+| `memory` | `src/tools/memory.ts` | Persistent key-value store across sessions |
+| `multiEdit` | `src/tools/multi-edit.ts` | Apply multiple find-and-replace edits to a file in one call |
+| `codeOutline` | `src/tools/code-outline.ts` | Extract symbol outline (functions, classes, types) from a source file |
+| `rename` | `src/tools/rename.ts` | Rename or move files and directories |
+| `directoryTree` | `src/tools/directory-tree.ts` | Visualize directory structure recursively |
 | `webSearch` | `src/tools/web-search.ts` | Web search via SearXNG |
+| `diffFiles` | `src/tools/diff-files.ts` | Compare files, git HEAD versions, or raw strings |
 | `agentDone` | `src/tools/agent-done.ts` | Signal task completion with summary |
 
 ## Slash Commands
