@@ -1,4 +1,4 @@
-import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree } from '../tools/index.js';
+import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch } from '../tools/index.js';
 import type { ResolvedConfig, ApprovalCallback } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,6 +68,8 @@ export function createBuiltinTools(
   onApprovalNeeded?: ApprovalCallback,
 ): ToolSet {
   const cwd = config.cwd;
+  const searxngBaseUrl =
+    config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
 
   const allTools: ToolSet = {
     readFile: readFile(cwd),
@@ -86,6 +88,7 @@ export function createBuiltinTools(
     codeOutline: codeOutline(cwd),
     rename: rename(cwd),
     directoryTree: directoryTree(cwd),
+    webSearch: webSearch(searxngBaseUrl),
   };
 
   if (onApprovalNeeded) {

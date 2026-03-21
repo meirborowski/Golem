@@ -105,6 +105,7 @@ providers.set('myProvider', {
 | `listFiles` | `src/tools/list-files.ts` | Glob-based file discovery |
 | `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
 | `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
+| `webSearch` | `src/tools/web-search.ts` | Web search via SearXNG |
 
 ## Slash Commands
 
@@ -144,7 +145,7 @@ golem --debug                      # Enable debug logging
 
 - Global: `~/.config/golem/config.json` (or `%APPDATA%\golem\config.json` on Windows)
 - Project: `.golem/config.json` (walks up from cwd)
-- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.
+- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SEARXNG_BASE_URL`, etc.
 
 ### Config Options
 
@@ -156,7 +157,8 @@ golem --debug                      # Enable debug logging
   "contextWindow": 128000,
   "temperature": 0.7,
   "providers": {
-    "ollama": { "baseUrl": "http://localhost:11434/api" }
+    "ollama": { "baseUrl": "http://localhost:11434/api" },
+    "searxng": { "baseUrl": "http://localhost:8080" }
   }
 }
 ```

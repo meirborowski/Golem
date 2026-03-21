@@ -7,6 +7,7 @@ import { App } from './app.js';
 import { resolveConfig } from './core/config.js';
 import { listProviders } from './core/provider-registry.js';
 import { initLogger } from './utils/logger.js';
+import { ensureSearxng, cleanupSearxng } from './utils/searxng.js';
 
 const cli = meow(
   `
@@ -47,6 +48,22 @@ const config = resolveConfig({
 
 // Initialize debug logger
 initLogger(config.debug);
+
+// Start SearXNG container if not already running (non-blocking on failure)
+const searxngBaseUrl =
+  config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
+await ensureSearxng(searxngBaseUrl);
+
+// Clean up SearXNG container on exit
+process.on('exit', cleanupSearxng);
+process.on('SIGINT', () => {
+  cleanupSearxng();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  cleanupSearxng();
+  process.exit(0);
+});
 
 // Render the Ink app
 render(<App config={config} />, {

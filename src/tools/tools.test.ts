@@ -18,6 +18,7 @@ import { multiEdit } from './multi-edit.js';
 import { codeOutline, extractSymbols } from './code-outline.js';
 import { rename } from './rename.js';
 import { directoryTree } from './directory-tree.js';
+import { webSearch } from './web-search.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -1304,5 +1305,30 @@ describe('directoryTree tool', () => {
     expect(result.success).toBe(true);
     expect(result.tree).toBe('empty/\n');
     expect(result.totalEntries).toBe(0);
+  });
+});
+
+// ── webSearch ──────────────────────────────────────────────────────────────
+
+describe('webSearch tool', () => {
+  it('returns error for unreachable SearXNG instance', async () => {
+    const tool = webSearch('http://localhost:1');
+    const result = await tool.execute(
+      { query: 'test', categories: null, language: null, maxResults: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
+
+  it('handles timeout', async () => {
+    const tool = webSearch('https://httpbin.org/delay/10');
+    const result = await tool.execute(
+      { query: 'test', categories: null, language: null, maxResults: null },
+      { toolCallId: 'test', messages: [] },
+    );
+
+    expect(result.success).toBe(false);
   });
 });
