@@ -1,4 +1,4 @@
-import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch } from '../tools/index.js';
+import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles } from '../tools/index.js';
 import type { ResolvedConfig, ApprovalCallback } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,6 +89,7 @@ export function createBuiltinTools(
     rename: rename(cwd),
     directoryTree: directoryTree(cwd),
     webSearch: webSearch(searxngBaseUrl),
+    diffFiles: diffFiles(cwd),
   };
 
   if (onApprovalNeeded) {

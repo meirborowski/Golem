@@ -15,3 +15,4 @@ export { codeOutline, extractSymbols } from './code-outline.js';
 export { rename } from './rename.js';
 export { directoryTree } from './directory-tree.js';
 export { webSearch } from './web-search.js';
+export { diffFiles } from './diff-files.js';

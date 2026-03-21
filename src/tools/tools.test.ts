@@ -19,6 +19,7 @@ import { codeOutline, extractSymbols } from './code-outline.js';
 import { rename } from './rename.js';
 import { directoryTree } from './directory-tree.js';
 import { webSearch } from './web-search.js';
+import { diffFiles } from './diff-files.js';
 import { execSync } from 'node:child_process';
 import { vi } from 'vitest';
 
@@ -1330,5 +1331,115 @@ describe('webSearch tool', () => {
     );
 
     expect(result.success).toBe(false);
+  });
+});
+
+// ── diffFiles ──────────────────────────────────────────────────────────────
+
+describe('diffFiles tool', () => {
+  const ctx = { toolCallId: 'test', messages: [] };
+  const defaults = {
+    filePath1: null,
+    filePath2: null,
+    content1: null,
+    content2: null,
+    useGitHead: null,
+    contextLines: null,
+    ignoreWhitespace: null,
+  };
+
+  it('diffs two files with changes', async () => {
+    writeFileSync(join(TMP, 'a.txt'), 'line1\nline2\nline3\n', 'utf-8');
+    writeFileSync(join(TMP, 'b.txt'), 'line1\nmodified\nline3\n', 'utf-8');
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, filePath1: 'a.txt', filePath2: 'b.txt' },
+      ctx,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.identical).toBe(false);
+    expect(result.linesAdded).toBe(1);
+    expect(result.linesRemoved).toBe(1);
+    expect(result.diff).toContain('-line2');
+    expect(result.diff).toContain('+modified');
+  });
+
+  it('reports identical files', async () => {
+    writeFileSync(join(TMP, 'same1.txt'), 'hello\nworld\n', 'utf-8');
+    writeFileSync(join(TMP, 'same2.txt'), 'hello\nworld\n', 'utf-8');
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, filePath1: 'same1.txt', filePath2: 'same2.txt' },
+      ctx,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.identical).toBe(true);
+    expect(result.diff).toBe('');
+  });
+
+  it('diffs raw strings', async () => {
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, content1: 'foo\nbar\n', content2: 'foo\nbaz\n' },
+      ctx,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.identical).toBe(false);
+    expect(result.diff).toContain('-bar');
+    expect(result.diff).toContain('+baz');
+  });
+
+  it('returns error for non-existent file', async () => {
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, filePath1: 'nope.txt', filePath2: 'also-nope.txt' },
+      ctx,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('returns error for invalid arguments', async () => {
+    const tool = diffFiles(TMP);
+    const result = await tool.execute({ ...defaults }, ctx);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Invalid arguments');
+  });
+
+  it('respects contextLines parameter', async () => {
+    const lines = Array.from({ length: 20 }, (_, i) => `line${i + 1}`).join('\n');
+    const modified = lines.replace('line10', 'CHANGED');
+    writeFileSync(join(TMP, 'ctx-a.txt'), lines, 'utf-8');
+    writeFileSync(join(TMP, 'ctx-b.txt'), modified, 'utf-8');
+
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, filePath1: 'ctx-a.txt', filePath2: 'ctx-b.txt', contextLines: 1 },
+      ctx,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.diff).toContain('-line10');
+    expect(result.diff).toContain('+CHANGED');
+    // With context=1, line1 should not appear in the diff
+    expect(result.diff).not.toContain(' line1\n');
+  });
+
+  it('ignores whitespace when requested', async () => {
+    writeFileSync(join(TMP, 'ws-a.txt'), 'hello  \nworld\n', 'utf-8');
+    writeFileSync(join(TMP, 'ws-b.txt'), 'hello\nworld\n', 'utf-8');
+    const tool = diffFiles(TMP);
+    const result = await tool.execute(
+      { ...defaults, filePath1: 'ws-a.txt', filePath2: 'ws-b.txt', ignoreWhitespace: true },
+      ctx,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.identical).toBe(true);
   });
 });
