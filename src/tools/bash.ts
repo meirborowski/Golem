@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { execSync } from 'node:child_process';
+import { execAsync } from '../utils/exec-async.js';
 
 const DEFAULT_TIMEOUT = 30_000; // 30 seconds
 
@@ -14,36 +14,23 @@ export const bash = (cwd: string) =>
     }),
     execute: async ({ command, timeout: rawTimeout }) => {
       const timeout = rawTimeout ?? DEFAULT_TIMEOUT;
-      try {
-        const stdout = execSync(command, {
-          cwd,
-          timeout,
-          encoding: 'utf-8',
-          maxBuffer: 1024 * 1024, // 1MB
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+      const result = await execAsync(command, { cwd, timeout });
 
+      if (result.exitCode === 0) {
         return {
           success: true,
-          stdout: stdout.trim(),
-          stderr: '',
+          stdout: result.stdout,
+          stderr: result.stderr,
           exitCode: 0,
         };
-      } catch (error: unknown) {
-        const execError = error as {
-          stdout?: string;
-          stderr?: string;
-          status?: number;
-          message?: string;
-        };
-
-        return {
-          success: false,
-          stdout: (execError.stdout ?? '').trim(),
-          stderr: (execError.stderr ?? '').trim(),
-          exitCode: execError.status ?? 1,
-          error: execError.message ?? 'Command failed',
-        };
       }
+
+      return {
+        success: false,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        error: result.stderr || `Command exited with code ${result.exitCode}`,
+      };
     },
   });

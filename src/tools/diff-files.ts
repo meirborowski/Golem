@@ -1,8 +1,8 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { resolvePath } from '../utils/file-utils.js';
+import { execAsync } from '../utils/exec-async.js';
 import { unifiedDiff } from '../utils/diff.js';
 
 const MAX_FILE_SIZE = 512 * 1024; // 512KB
@@ -23,16 +23,12 @@ function readFileChecked(filePath: string): string {
   return readFileSync(filePath, 'utf-8');
 }
 
-function getGitHeadContent(filePath: string, cwd: string): string {
-  try {
-    return execSync(`git show HEAD:"${filePath}"`, {
-      cwd,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-  } catch {
+async function getGitHeadContent(filePath: string, cwd: string): Promise<string> {
+  const result = await execAsync(`git show HEAD:"${filePath}"`, { cwd, timeout: 10_000 });
+  if (result.exitCode !== 0) {
     throw new Error(`Cannot read HEAD version of ${filePath}. Is the file tracked by git?`);
   }
+  return result.stdout;
 }
 
 export const diffFiles = (cwd: string) =>
@@ -91,7 +87,7 @@ export const diffFiles = (cwd: string) =>
           // Git HEAD diff mode
           const resolved = resolvePath(rawPath1, cwd);
           textB = readFileChecked(resolved);
-          textA = getGitHeadContent(rawPath1, cwd);
+          textA = await getGitHeadContent(rawPath1, cwd);
           labelA = `a/${rawPath1} (HEAD)`;
           labelB = `b/${rawPath1} (working)`;
         } else if (rawPath1 !== null && rawPath2 !== null) {
