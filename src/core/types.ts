@@ -127,7 +127,7 @@ export type AppAction =
   | { type: 'ADD_SYSTEM_MESSAGE'; content: string }
   | { type: 'LOAD_SESSION'; messages: ChatMessage[]; tokenUsage: TokenUsage }
   | { type: 'START_AGENT_MODE'; task: string; maxTurns: number }
-  | { type: 'AGENT_TURN_COMPLETE' }
+  | { type: 'AGENT_TURN_COMPLETE'; turn: number }
   | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error' }
   | { type: 'AGENT_TOOL_START'; toolName: string; argsPreview: string }
   | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error' }

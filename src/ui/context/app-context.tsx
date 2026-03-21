@@ -117,7 +117,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         agentMode: state.agentMode
-          ? { ...state.agentMode, currentTurn: state.agentMode.currentTurn + 1 }
+          ? { ...state.agentMode, currentTurn: action.turn }
           : null,
       };
 

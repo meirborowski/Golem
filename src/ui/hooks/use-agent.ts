@@ -19,17 +19,16 @@ export function useAgent() {
       dispatch({ type: 'ADD_USER_MESSAGE', content: input });
       dispatch({ type: 'START_AGENT_MODE', task: input, maxTurns: MAX_TURNS });
 
-      // All turns run in background — no messages dispatched to the chat
-      let turnResult = await sendMessage(input, { silent: true, background: true });
+      // Turn 1 — run in background
       let turn = 1;
+      dispatch({ type: 'AGENT_TURN_COMPLETE', turn });
+      let turnResult = await sendMessage(input, { silent: true, background: true });
       let consecutiveErrors = 0;
       let lastText = turnResult.finalText;
       const allToolCalls: ToolCallInfo[] = [...turnResult.toolCalls];
 
       // Auto-continuation loop
       while (turn < MAX_TURNS && !cancelledRef.current) {
-        dispatch({ type: 'AGENT_TURN_COMPLETE' });
-
         // Stop if agentDone was called
         if (turnResult.agentDoneCalled) {
           break;
@@ -60,6 +59,10 @@ export function useAgent() {
           return;
         }
 
+        // Start next turn
+        turn++;
+        dispatch({ type: 'AGENT_TURN_COMPLETE', turn });
+
         // Continue in background — completely silent
         turnResult = await sendMessage(
           'Continue working on the task. If you are done, call the agentDone tool.',
@@ -69,7 +72,6 @@ export function useAgent() {
           lastText = turnResult.finalText;
         }
         allToolCalls.push(...turnResult.toolCalls);
-        turn++;
       }
 
       // Emit the single final assistant message
