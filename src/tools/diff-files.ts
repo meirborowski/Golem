@@ -12,6 +12,9 @@ function readFileChecked(filePath: string): string {
     throw new Error(`File not found: ${filePath}`);
   }
   const stat = statSync(filePath);
+  if (stat.isDirectory()) {
+    throw new Error(`Path is a directory, not a file: ${filePath}. Use the git tool with subcommand "diff" to diff an entire directory.`);
+  }
   if (stat.size > MAX_FILE_SIZE) {
     throw new Error(
       `File too large (${(stat.size / 1024).toFixed(0)}KB). Maximum: ${MAX_FILE_SIZE / 1024}KB`,
@@ -36,34 +39,27 @@ export const diffFiles = (cwd: string) =>
   tool({
     description:
       'Compare two files, a file against its git HEAD version, or two raw text strings. Returns a unified diff with change statistics.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath1: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Path to the first file (for file comparison or git HEAD mode)'),
       filePath2: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Path to the second file (for two-file comparison)'),
       content1: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('First raw text string (for string diff mode)'),
       content2: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Second raw text string (for string diff mode)'),
       useGitHead: z
         .union([z.boolean(), z.null()])
-        .default(null)
         .describe('Compare filePath1 against its last committed (HEAD) version. Null defaults to false.'),
       contextLines: z
         .union([z.number(), z.null()])
-        .default(null)
         .describe('Number of context lines around changes. Null defaults to 3.'),
       ignoreWhitespace: z
         .union([z.boolean(), z.null()])
-        .default(null)
         .describe('Ignore trailing whitespace differences. Null defaults to false.'),
     }),
     execute: async ({

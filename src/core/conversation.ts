@@ -1,7 +1,7 @@
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CoreMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
+import type { ModelMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
 import { detectProject } from '../utils/detect-project.js';
 import { loadMemoryForPrompt } from './memory.js';
@@ -11,7 +11,7 @@ const PROJECT_DOC_FILES = ['GOLEM.md', 'CLAUDE.md', 'README.md'];
 const MAX_DOC_CHARS = 8000; // Cap to avoid blowing the context window
 
 export class ConversationEngine {
-  private messages: CoreMessage[] = [];
+  private messages: ModelMessage[] = [];
   private totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   constructor(
@@ -37,27 +37,24 @@ export class ConversationEngine {
         system: this.buildSystemPrompt(),
         messages: this.messages,
         tools: this.tools,
-        maxSteps: 1000,
-        maxTokens: this.config.maxTokens,
+        stopWhen: stepCountIs(1000),
+        maxOutputTokens: this.config.maxTokens,
         temperature: this.config.temperature,
       });
-
-      let assistantText = '';
 
       for await (const part of result.fullStream) {
         switch (part.type) {
           case 'text-delta':
-            assistantText += part.textDelta;
-            yield { type: 'text-delta', text: part.textDelta };
+            yield { type: 'text-delta', text: part.text };
             break;
 
           case 'tool-call':
-            logger.debug('Tool call', { tool: part.toolName, args: part.args });
+            logger.debug('Tool call', { tool: part.toolName, input: part.input });
             yield {
               type: 'tool-call',
               toolName: part.toolName,
               toolCallId: part.toolCallId,
-              args: part.args,
+              args: part.input,
             };
             break;
 
@@ -67,19 +64,15 @@ export class ConversationEngine {
               type: 'tool-result',
               toolName: part.toolName,
               toolCallId: part.toolCallId,
-              result: part.result,
+              result: part.output,
             };
             break;
 
-          case 'step-finish':
-            // A step finished (could be followed by another if tools were called)
-            break;
-
           case 'finish':
-            if (part.usage) {
-              this.totalUsage.promptTokens += part.usage.promptTokens;
-              this.totalUsage.completionTokens += part.usage.completionTokens;
-              this.totalUsage.totalTokens += part.usage.totalTokens;
+            if (part.totalUsage) {
+              this.totalUsage.promptTokens += part.totalUsage.inputTokens ?? 0;
+              this.totalUsage.completionTokens += part.totalUsage.outputTokens ?? 0;
+              this.totalUsage.totalTokens += part.totalUsage.totalTokens ?? 0;
             }
             break;
 
@@ -89,10 +82,10 @@ export class ConversationEngine {
         }
       }
 
-      // Add the assistant response to history
-      if (assistantText) {
-        this.messages.push({ role: 'assistant', content: assistantText });
-      }
+      // Add the full response messages to history, preserving tool calls,
+      // tool results, and provider metadata (e.g. Gemini thought_signature)
+      const response = await result.response;
+      this.messages.push(...response.messages);
 
       yield { type: 'finish', usage: { ...this.totalUsage } };
     } catch (error) {
@@ -106,7 +99,7 @@ export class ConversationEngine {
     this.model = model;
   }
 
-  getMessages(): CoreMessage[] {
+  getMessages(): ModelMessage[] {
     return [...this.messages];
   }
 
@@ -119,7 +112,7 @@ export class ConversationEngine {
     this.totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
   }
 
-  loadHistory(messages: CoreMessage[], usage?: TokenUsage): void {
+  loadHistory(messages: ModelMessage[], usage?: TokenUsage): void {
     this.messages = [...messages];
     if (usage) {
       this.totalUsage = { ...usage };
@@ -134,7 +127,7 @@ export class ConversationEngine {
     return Math.ceil(text.length / 4);
   }
 
-  private estimateMessageTokens(msg: CoreMessage): number {
+  private estimateMessageTokens(msg: ModelMessage): number {
     if (typeof msg.content === 'string') {
       return this.estimateTokens(msg.content) + 4; // +4 for role/framing overhead
     }

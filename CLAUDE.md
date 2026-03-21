@@ -44,7 +44,7 @@ Single `useReducer` at the App level, distributed via React Context (`AppContext
 - **File naming**: kebab-case. React = `.tsx`, everything else = `.ts`.
 - **Imports**: Use `type` keyword for type-only imports. Always use `.js` extension in import paths (ESM requirement).
 - **Tools**: One file per tool in `src/tools/`. Export as named constant (factory function taking `cwd`).
-- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters (Anthropic API requires all properties in `required`). Handle defaults in `execute()`.
+- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters. Do NOT add `.default(null)` — the tool registry normalizes missing nullable params automatically. Handle defaults in `execute()`.
 - **Errors**: Tools return `{ success: false, error: string }` — never throw.
 - **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout (Ink owns the terminal).
 
@@ -59,7 +59,7 @@ import { z } from 'zod';
 export const myTool = (cwd: string) =>
   tool({
     description: 'What this tool does',
-    parameters: z.object({
+    inputSchema: z.object({
       param1: z.string().describe('Description'),
       optionalParam: z.union([z.number(), z.null()]).describe('Optional. Null defaults to 10.'),
     }),
@@ -176,7 +176,7 @@ golem --debug                      # Enable debug logging
 
 | Package | Purpose |
 |---------|---------|
-| `ai` | Vercel AI SDK — `streamText`, `tool`, message types |
+| `ai` | Vercel AI SDK v6 — `streamText`, `tool`, message types |
 | `@ai-sdk/anthropic` | Anthropic provider |
 | `@ai-sdk/openai` | OpenAI provider |
 | `@ai-sdk/google` | Google Gemini provider |

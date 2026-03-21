@@ -61,7 +61,8 @@ providers.set('ollama', {
     const provider = createOllama({
       baseURL: options?.baseUrl || 'http://localhost:11434/api',
     });
-    return provider(modelId);
+    // ollama-ai-provider returns LanguageModelV1; cast for SDK v6 compat
+    return provider(modelId) as unknown as LanguageModel;
   },
 });
 

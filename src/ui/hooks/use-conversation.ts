@@ -3,7 +3,7 @@ import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools } from '../../core/tool-registry.js';
 import type { ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
 
@@ -129,7 +129,7 @@ export function useConversation() {
       if (!engineRef.current) return;
 
       // Convert ChatMessages to CoreMessages for the engine
-      const coreMessages: CoreMessage[] = messages
+      const coreMessages: ModelMessage[] = messages
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 

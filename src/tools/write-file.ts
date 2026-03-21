@@ -8,7 +8,7 @@ export const writeFile = (cwd: string) =>
   tool({
     description:
       'Create or overwrite a file with the given content. Creates parent directories if they do not exist.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath: z.string().describe('Path to the file to create or overwrite'),
       content: z.string().describe('The full content to write to the file'),
     }),

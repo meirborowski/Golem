@@ -8,7 +8,7 @@ export const rename = (cwd: string) =>
   tool({
     description:
       'Rename or move a file or directory. Both oldPath and newPath can be relative to the working directory or absolute.',
-    parameters: z.object({
+    inputSchema: z.object({
       oldPath: z.string().describe('Current path of the file or directory'),
       newPath: z.string().describe('New path for the file or directory'),
     }),

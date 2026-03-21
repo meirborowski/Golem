@@ -36,21 +36,18 @@ export const todoManager = (cwd: string) =>
   tool({
     description:
       'Manage an in-session task list to track progress on multi-step work. Use this to break down complex tasks, track what has been done, and plan next steps. The list persists for the session only.',
-    parameters: z.object({
+    inputSchema: z.object({
       action: z
         .enum(['add', 'update', 'remove', 'list', 'clear'])
         .describe('The action to perform on the todo list'),
       task: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Task description (required for "add")'),
       id: z
         .union([z.number(), z.null()])
-        .default(null)
         .describe('Task ID (required for "update" and "remove")'),
       status: z
         .union([z.enum(['pending', 'in-progress', 'done']), z.null()])
-        .default(null)
         .describe('New status (for "update"). Null keeps current status.'),
     }),
     execute: async ({ action, task, id, status }) => {

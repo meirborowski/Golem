@@ -117,7 +117,7 @@ export const patch = (cwd: string) =>
   tool({
     description:
       'Apply a unified diff patch to a file. Supports standard unified diff format with @@ hunk headers. Use this for multi-hunk edits that would be cumbersome with editFile. The diff should use - for removed lines, + for added lines, and space for context lines.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath: z.string().describe('Absolute or relative path to the file to patch'),
       diff: z.string().describe(
         'Unified diff to apply. Must include @@ -start,count +start,count @@ hunk headers. Lines starting with - are removed, + are added, space or empty are context.',

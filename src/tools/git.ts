@@ -34,7 +34,7 @@ export const git = (cwd: string) =>
   tool({
     description:
       'Execute git operations in the project repository. Supports status, diff, log, show, add, commit, checkout, branch, merge, rebase, push, pull, stash, reset, tag, and remote. Read-only operations (status, diff, log, show, branch list, etc.) run without approval; write operations require user confirmation.',
-    parameters: z.object({
+    inputSchema: z.object({
       subcommand: z
         .enum([
           'status',
@@ -57,7 +57,6 @@ export const git = (cwd: string) =>
         .describe('The git subcommand to run'),
       args: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe(
           'Arguments for the subcommand (e.g. "--oneline -5" for log, "-m \\"message\\"" for commit). Null for no args.',
         ),

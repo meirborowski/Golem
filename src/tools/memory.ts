@@ -7,21 +7,18 @@ export const memory = (cwd: string) =>
   tool({
     description:
       'Persistent key-value memory that survives across sessions. Use "project" scope for project-specific context (stored in .golem/memory.json) and "global" scope for user preferences (stored in ~/.config/golem/memory.json). Store decisions, conventions, user preferences, or any context worth remembering.',
-    parameters: z.object({
+    inputSchema: z.object({
       action: z
         .enum(['set', 'get', 'delete', 'list', 'clear'])
         .describe('The action to perform'),
       key: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Memory key (required for set, get, delete). Use descriptive names like "test-framework" or "preferred-style".'),
       value: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Value to store (required for set).'),
       scope: z
         .union([z.enum(['global', 'project']), z.null()])
-        .default(null)
         .describe('Where to store. "project" (default) for project-specific, "global" for cross-project preferences.'),
     }),
     execute: async ({ action, key, value, scope: rawScope }) => {

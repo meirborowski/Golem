@@ -25,6 +25,11 @@ import { vi } from 'vitest';
 
 const TMP = join(tmpdir(), `golem-test-tools-${Date.now()}`);
 
+// In AI SDK v6, tool.execute return type includes AsyncIterable in the union.
+// Our tools always return plain objects. Use this type for cleaner test code.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyTool = { execute: (args: any, ctx: any) => Promise<any> };
+
 beforeEach(() => mkdirSync(TMP, { recursive: true }));
 afterEach(() => rmSync(TMP, { recursive: true, force: true }));
 
@@ -33,7 +38,7 @@ afterEach(() => rmSync(TMP, { recursive: true, force: true }));
 describe('readFile tool', () => {
   it('reads a file successfully', async () => {
     writeFileSync(join(TMP, 'hello.txt'), 'hello\nworld', 'utf-8');
-    const tool = readFile(TMP);
+    const tool = readFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'hello.txt', startLine: null, endLine: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -43,7 +48,7 @@ describe('readFile tool', () => {
 
   it('reads a line range', async () => {
     writeFileSync(join(TMP, 'lines.txt'), 'a\nb\nc\nd\ne', 'utf-8');
-    const tool = readFile(TMP);
+    const tool = readFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'lines.txt', startLine: 2, endLine: 3 }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -51,7 +56,7 @@ describe('readFile tool', () => {
   });
 
   it('returns error for non-existent file', async () => {
-    const tool = readFile(TMP);
+    const tool = readFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'nope.txt', startLine: null, endLine: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -63,7 +68,7 @@ describe('readFile tool', () => {
 
 describe('writeFile tool', () => {
   it('creates a new file', async () => {
-    const tool = writeFile(TMP);
+    const tool = writeFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'new.txt', content: 'hello world' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -71,7 +76,7 @@ describe('writeFile tool', () => {
   });
 
   it('creates nested directories', async () => {
-    const tool = writeFile(TMP);
+    const tool = writeFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'deep/nested/file.txt', content: 'deep' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -80,7 +85,7 @@ describe('writeFile tool', () => {
 
   it('overwrites existing file', async () => {
     writeFileSync(join(TMP, 'existing.txt'), 'old', 'utf-8');
-    const tool = writeFile(TMP);
+    const tool = writeFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'existing.txt', content: 'new' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -93,7 +98,7 @@ describe('writeFile tool', () => {
 describe('editFile tool', () => {
   it('replaces text in a file', async () => {
     writeFileSync(join(TMP, 'edit.txt'), 'const x = 1;\nconst y = 2;', 'utf-8');
-    const tool = editFile(TMP);
+    const tool = editFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'edit.txt', oldText: 'const x = 1;', newText: 'const x = 42;' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -102,7 +107,7 @@ describe('editFile tool', () => {
 
   it('returns error when text not found', async () => {
     writeFileSync(join(TMP, 'edit2.txt'), 'foo bar', 'utf-8');
-    const tool = editFile(TMP);
+    const tool = editFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'edit2.txt', oldText: 'baz', newText: 'qux' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -111,7 +116,7 @@ describe('editFile tool', () => {
 
   it('returns error for ambiguous match', async () => {
     writeFileSync(join(TMP, 'edit3.txt'), 'aaa bbb aaa', 'utf-8');
-    const tool = editFile(TMP);
+    const tool = editFile(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'edit3.txt', oldText: 'aaa', newText: 'ccc' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -126,7 +131,7 @@ describe('listFiles tool', () => {
     writeFileSync(join(TMP, 'a.ts'), '', 'utf-8');
     writeFileSync(join(TMP, 'b.ts'), '', 'utf-8');
     writeFileSync(join(TMP, 'c.js'), '', 'utf-8');
-    const tool = listFiles(TMP);
+    const tool = listFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute({ pattern: '*.ts', maxResults: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -139,7 +144,7 @@ describe('listFiles tool', () => {
     writeFileSync(join(TMP, '1.txt'), '', 'utf-8');
     writeFileSync(join(TMP, '2.txt'), '', 'utf-8');
     writeFileSync(join(TMP, '3.txt'), '', 'utf-8');
-    const tool = listFiles(TMP);
+    const tool = listFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute({ pattern: '*.txt', maxResults: 2 }, { toolCallId: 'test', messages: [] });
 
     expect(result.files!.length).toBeLessThanOrEqual(2);
@@ -152,7 +157,7 @@ describe('listFiles tool', () => {
 describe('searchFiles tool', () => {
   it('finds matches in files', async () => {
     writeFileSync(join(TMP, 'search.txt'), 'hello world\nfoo bar\nhello again', 'utf-8');
-    const tool = searchFiles(TMP);
+    const tool = searchFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { pattern: 'hello', glob: '*.txt', maxResults: null, contextLines: null },
       { toolCallId: 'test', messages: [] },
@@ -165,7 +170,7 @@ describe('searchFiles tool', () => {
 
   it('returns empty for no matches', async () => {
     writeFileSync(join(TMP, 'no-match.txt'), 'nothing here', 'utf-8');
-    const tool = searchFiles(TMP);
+    const tool = searchFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { pattern: 'zzzzz', glob: '*.txt', maxResults: null, contextLines: null },
       { toolCallId: 'test', messages: [] },
@@ -180,7 +185,7 @@ describe('searchFiles tool', () => {
 
 describe('bash tool', () => {
   it('executes a command successfully', async () => {
-    const tool = bash(TMP);
+    const tool = bash(TMP) as unknown as AnyTool;
     const result = await tool.execute({ command: 'echo hello', timeout: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -189,7 +194,7 @@ describe('bash tool', () => {
   });
 
   it('captures stderr and exit code on failure', async () => {
-    const tool = bash(TMP);
+    const tool = bash(TMP) as unknown as AnyTool;
     const result = await tool.execute({ command: 'node -e "process.exit(1)"', timeout: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -214,7 +219,7 @@ describe('git tool', () => {
   });
 
   it('runs git status', async () => {
-    const tool = git(GIT_TMP);
+    const tool = git(GIT_TMP) as unknown as AnyTool;
     const result = await tool.execute({ subcommand: 'status', args: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -226,7 +231,7 @@ describe('git tool', () => {
     execSync('git add .', { cwd: GIT_TMP, stdio: 'pipe' });
     execSync('git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
 
-    const tool = git(GIT_TMP);
+    const tool = git(GIT_TMP) as unknown as AnyTool;
     const result = await tool.execute({ subcommand: 'log', args: '--oneline -1' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -239,7 +244,7 @@ describe('git tool', () => {
     execSync('git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
     writeFileSync(join(GIT_TMP, 'file.txt'), 'hello world', 'utf-8');
 
-    const tool = git(GIT_TMP);
+    const tool = git(GIT_TMP) as unknown as AnyTool;
     const result = await tool.execute({ subcommand: 'diff', args: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -249,7 +254,7 @@ describe('git tool', () => {
   it('runs git add and commit', async () => {
     writeFileSync(join(GIT_TMP, 'new.txt'), 'content', 'utf-8');
 
-    const tool = git(GIT_TMP);
+    const tool = git(GIT_TMP) as unknown as AnyTool;
     const addResult = await tool.execute({ subcommand: 'add', args: '.' }, { toolCallId: 'test', messages: [] });
     expect(addResult.success).toBe(true);
 
@@ -262,7 +267,7 @@ describe('git tool', () => {
     writeFileSync(join(GIT_TMP, 'file.txt'), 'hello', 'utf-8');
     execSync('git add . && git commit -m "init"', { cwd: GIT_TMP, stdio: 'pipe' });
 
-    const tool = git(GIT_TMP);
+    const tool = git(GIT_TMP) as unknown as AnyTool;
     const result = await tool.execute({ subcommand: 'branch', args: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -274,7 +279,7 @@ describe('git tool', () => {
     mkdirSync(nonGitDir, { recursive: true });
 
     try {
-      const tool = git(nonGitDir);
+      const tool = git(nonGitDir) as unknown as AnyTool;
       const result = await tool.execute({ subcommand: 'status', args: null }, { toolCallId: 'test', messages: [] });
 
       expect(result.success).toBe(false);
@@ -338,7 +343,7 @@ describe('isGitReadOnly', () => {
 
 describe('think tool', () => {
   it('returns the thought as-is', async () => {
-    const tool = think();
+    const tool = think() as unknown as AnyTool;
     const result = await tool.execute({ thought: 'Step 1: Read the file. Step 2: Edit it.' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -350,7 +355,7 @@ describe('think tool', () => {
 
 describe('fetchUrl tool', () => {
   it('fetches a URL successfully', async () => {
-    const tool = fetchUrl();
+    const tool = fetchUrl() as unknown as AnyTool;
     const result = await tool.execute(
       { url: 'https://httpbin.org/get', method: null, headers: null, body: null, timeout: null },
       { toolCallId: 'test', messages: [] },
@@ -362,7 +367,7 @@ describe('fetchUrl tool', () => {
   });
 
   it('handles POST with body', async () => {
-    const tool = fetchUrl();
+    const tool = fetchUrl() as unknown as AnyTool;
     const result = await tool.execute(
       {
         url: 'https://httpbin.org/post',
@@ -379,7 +384,7 @@ describe('fetchUrl tool', () => {
   });
 
   it('returns error for invalid URL', async () => {
-    const tool = fetchUrl();
+    const tool = fetchUrl() as unknown as AnyTool;
     const result = await tool.execute(
       { url: 'not-a-url', method: null, headers: null, body: null, timeout: null },
       { toolCallId: 'test', messages: [] },
@@ -390,7 +395,7 @@ describe('fetchUrl tool', () => {
   });
 
   it('handles timeout', async () => {
-    const tool = fetchUrl();
+    const tool = fetchUrl() as unknown as AnyTool;
     const result = await tool.execute(
       { url: 'https://httpbin.org/delay/10', method: null, headers: null, body: null, timeout: 500 },
       { toolCallId: 'test', messages: [] },
@@ -415,7 +420,7 @@ describe('patch tool', () => {
       ' line 3',
     ].join('\n');
 
-    const tool = patch(TMP);
+    const tool = patch(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'patch-test.txt', diff }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -437,7 +442,7 @@ describe('patch tool', () => {
       ' c',
     ].join('\n');
 
-    const tool = patch(TMP);
+    const tool = patch(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'patch-add.txt', diff }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
@@ -446,7 +451,7 @@ describe('patch tool', () => {
   });
 
   it('returns error for non-existent file', async () => {
-    const tool = patch(TMP);
+    const tool = patch(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'nope.txt', diff: '@@ -1,1 +1,1 @@\n-a\n+b' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -456,7 +461,7 @@ describe('patch tool', () => {
   it('returns error for invalid diff', async () => {
     writeFileSync(join(TMP, 'patch-bad.txt'), 'content\n', 'utf-8');
 
-    const tool = patch(TMP);
+    const tool = patch(TMP) as unknown as AnyTool;
     const result = await tool.execute({ filePath: 'patch-bad.txt', diff: 'not a diff' }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -473,7 +478,7 @@ describe('todoManager tool', () => {
   beforeEach(() => mkdirSync(TODO_CWD, { recursive: true }));
 
   it('adds a task', async () => {
-    const tool = todoManager(TODO_CWD);
+    const tool = todoManager(TODO_CWD) as unknown as AnyTool;
     const result = await tool.execute(
       { action: 'add', task: 'Fix the bug', id: null, status: null },
       { toolCallId: 'test', messages: [] },
@@ -484,7 +489,7 @@ describe('todoManager tool', () => {
   });
 
   it('lists tasks', async () => {
-    const tool = todoManager(TODO_CWD + '-list');
+    const tool = todoManager(TODO_CWD + '-list') as unknown as AnyTool;
     await tool.execute({ action: 'add', task: 'Task A', id: null, status: null }, { toolCallId: 'test', messages: [] });
     await tool.execute({ action: 'add', task: 'Task B', id: null, status: null }, { toolCallId: 'test', messages: [] });
 
@@ -497,7 +502,7 @@ describe('todoManager tool', () => {
   });
 
   it('updates task status', async () => {
-    const tool = todoManager(TODO_CWD + '-update');
+    const tool = todoManager(TODO_CWD + '-update') as unknown as AnyTool;
     const addResult = await tool.execute({ action: 'add', task: 'Do stuff', id: null, status: null }, { toolCallId: 'test', messages: [] });
 
     // Extract the ID from the message
@@ -511,7 +516,7 @@ describe('todoManager tool', () => {
   });
 
   it('removes a task', async () => {
-    const tool = todoManager(TODO_CWD + '-remove');
+    const tool = todoManager(TODO_CWD + '-remove') as unknown as AnyTool;
     const addResult = await tool.execute({ action: 'add', task: 'Temp task', id: null, status: null }, { toolCallId: 'test', messages: [] });
 
     const idMatch = (addResult.message as string).match(/#(\d+)/);
@@ -524,7 +529,7 @@ describe('todoManager tool', () => {
   });
 
   it('clears all tasks', async () => {
-    const tool = todoManager(TODO_CWD + '-clear');
+    const tool = todoManager(TODO_CWD + '-clear') as unknown as AnyTool;
     await tool.execute({ action: 'add', task: 'A', id: null, status: null }, { toolCallId: 'test', messages: [] });
     await tool.execute({ action: 'add', task: 'B', id: null, status: null }, { toolCallId: 'test', messages: [] });
 
@@ -535,7 +540,7 @@ describe('todoManager tool', () => {
   });
 
   it('returns error for missing task on add', async () => {
-    const tool = todoManager(TODO_CWD + '-err');
+    const tool = todoManager(TODO_CWD + '-err') as unknown as AnyTool;
     const result = await tool.execute({ action: 'add', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
@@ -551,7 +556,7 @@ describe('memory tool', () => {
   beforeEach(() => mkdirSync(MEM_CWD, { recursive: true }));
 
   it('stores and retrieves a value', async () => {
-    const tool = memory(MEM_CWD);
+    const tool = memory(MEM_CWD) as unknown as AnyTool;
     const setResult = await tool.execute(
       { action: 'set', key: 'lang', value: 'typescript', scope: 'project' },
       { toolCallId: 'test', messages: [] },
@@ -567,7 +572,7 @@ describe('memory tool', () => {
   });
 
   it('lists all entries', async () => {
-    const tool = memory(MEM_CWD + '-list');
+    const tool = memory(MEM_CWD + '-list') as unknown as AnyTool;
     await tool.execute({ action: 'set', key: 'a', value: '1', scope: 'project' }, { toolCallId: 'test', messages: [] });
     await tool.execute({ action: 'set', key: 'b', value: '2', scope: 'project' }, { toolCallId: 'test', messages: [] });
 
@@ -580,7 +585,7 @@ describe('memory tool', () => {
   });
 
   it('deletes an entry', async () => {
-    const tool = memory(MEM_CWD + '-del');
+    const tool = memory(MEM_CWD + '-del') as unknown as AnyTool;
     await tool.execute({ action: 'set', key: 'tmp', value: 'val', scope: 'project' }, { toolCallId: 'test', messages: [] });
 
     const delResult = await tool.execute(
@@ -597,7 +602,7 @@ describe('memory tool', () => {
   });
 
   it('clears all entries', async () => {
-    const tool = memory(MEM_CWD + '-clear');
+    const tool = memory(MEM_CWD + '-clear') as unknown as AnyTool;
     await tool.execute({ action: 'set', key: 'x', value: '1', scope: 'project' }, { toolCallId: 'test', messages: [] });
     await tool.execute({ action: 'set', key: 'y', value: '2', scope: 'project' }, { toolCallId: 'test', messages: [] });
 
@@ -613,7 +618,7 @@ describe('memory tool', () => {
     // Stub XDG to use temp dir for global storage
     vi.stubEnv('XDG_CONFIG_HOME', MEM_CWD + '-global');
 
-    const tool = memory(MEM_CWD);
+    const tool = memory(MEM_CWD) as unknown as AnyTool;
     const setResult = await tool.execute(
       { action: 'set', key: 'theme', value: 'dark', scope: 'global' },
       { toolCallId: 'test', messages: [] },
@@ -632,7 +637,7 @@ describe('memory tool', () => {
   });
 
   it('defaults to project scope', async () => {
-    const tool = memory(MEM_CWD + '-default');
+    const tool = memory(MEM_CWD + '-default') as unknown as AnyTool;
     const result = await tool.execute(
       { action: 'set', key: 'foo', value: 'bar', scope: null },
       { toolCallId: 'test', messages: [] },
@@ -642,7 +647,7 @@ describe('memory tool', () => {
   });
 
   it('returns error for get on non-existent key', async () => {
-    const tool = memory(MEM_CWD + '-nokey');
+    const tool = memory(MEM_CWD + '-nokey') as unknown as AnyTool;
     const result = await tool.execute(
       { action: 'get', key: 'nope', value: null, scope: 'project' },
       { toolCallId: 'test', messages: [] },
@@ -657,7 +662,7 @@ describe('memory tool', () => {
 describe('multiEdit tool', () => {
   it('applies multiple edits to a file', async () => {
     writeFileSync(join(TMP, 'multi.ts'), 'import { foo } from "bar";\n\nfunction hello() {\n  return "world";\n}\n', 'utf-8');
-    const tool = multiEdit(TMP);
+    const tool = multiEdit(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       {
         filePath: 'multi.ts',
@@ -680,7 +685,7 @@ describe('multiEdit tool', () => {
   it('leaves file unchanged when an edit fails', async () => {
     const original = 'line one\nline two\nline three\n';
     writeFileSync(join(TMP, 'multi-fail.txt'), original, 'utf-8');
-    const tool = multiEdit(TMP);
+    const tool = multiEdit(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       {
         filePath: 'multi-fail.txt',
@@ -703,7 +708,7 @@ describe('multiEdit tool', () => {
 
   it('rejects ambiguous matches', async () => {
     writeFileSync(join(TMP, 'multi-ambig.txt'), 'aaa\nbbb\naaa\n', 'utf-8');
-    const tool = multiEdit(TMP);
+    const tool = multiEdit(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       {
         filePath: 'multi-ambig.txt',
@@ -717,7 +722,7 @@ describe('multiEdit tool', () => {
   });
 
   it('returns error for non-existent file', async () => {
-    const tool = multiEdit(TMP);
+    const tool = multiEdit(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       {
         filePath: 'nope.txt',
@@ -732,7 +737,7 @@ describe('multiEdit tool', () => {
 
   it('applies sequential edits where later edits depend on earlier ones', async () => {
     writeFileSync(join(TMP, 'multi-seq.txt'), 'const x = 1;\n', 'utf-8');
-    const tool = multiEdit(TMP);
+    const tool = multiEdit(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       {
         filePath: 'multi-seq.txt',
@@ -880,7 +885,7 @@ describe('codeOutline tool', () => {
   });
 
   it('tool returns error for non-existent file', async () => {
-    const tool = codeOutline(TMP);
+    const tool = codeOutline(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { filePath: 'nope.ts' },
       { toolCallId: 'test', messages: [] },
@@ -894,7 +899,7 @@ describe('codeOutline tool', () => {
     const code = 'export function hello() {}\nconst x = 1;\n';
     writeFileSync(join(TMP, 'outline-test.ts'), code, 'utf-8');
 
-    const tool = codeOutline(TMP);
+    const tool = codeOutline(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { filePath: 'outline-test.ts' },
       { toolCallId: 'test', messages: [] },
@@ -1123,7 +1128,7 @@ describe('codeOutline tool', () => {
 describe('rename tool', () => {
   it('renames a file', async () => {
     writeFileSync(join(TMP, 'old-name.txt'), 'content', 'utf-8');
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'old-name.txt', newPath: 'new-name.txt' },
       { toolCallId: 'test', messages: [] },
@@ -1139,7 +1144,7 @@ describe('rename tool', () => {
     writeFileSync(join(TMP, 'moveme.txt'), 'data', 'utf-8');
     mkdirSync(join(TMP, 'subdir'), { recursive: true });
 
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'moveme.txt', newPath: 'subdir/moveme.txt' },
       { toolCallId: 'test', messages: [] },
@@ -1154,7 +1159,7 @@ describe('rename tool', () => {
     mkdirSync(join(TMP, 'old-dir'), { recursive: true });
     writeFileSync(join(TMP, 'old-dir', 'file.txt'), 'inside', 'utf-8');
 
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'old-dir', newPath: 'new-dir' },
       { toolCallId: 'test', messages: [] },
@@ -1166,7 +1171,7 @@ describe('rename tool', () => {
   });
 
   it('returns error for non-existent source', async () => {
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'nope.txt', newPath: 'dest.txt' },
       { toolCallId: 'test', messages: [] },
@@ -1180,7 +1185,7 @@ describe('rename tool', () => {
     writeFileSync(join(TMP, 'a.txt'), 'a', 'utf-8');
     writeFileSync(join(TMP, 'b.txt'), 'b', 'utf-8');
 
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'a.txt', newPath: 'b.txt' },
       { toolCallId: 'test', messages: [] },
@@ -1196,7 +1201,7 @@ describe('rename tool', () => {
   it('returns error if destination directory does not exist', async () => {
     writeFileSync(join(TMP, 'file.txt'), 'data', 'utf-8');
 
-    const tool = rename(TMP);
+    const tool = rename(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { oldPath: 'file.txt', newPath: 'nonexistent/file.txt' },
       { toolCallId: 'test', messages: [] },
@@ -1216,7 +1221,7 @@ describe('directoryTree tool', () => {
     writeFileSync(join(TMP, 'src', 'utils', 'helper.ts'), 'export {}', 'utf-8');
     writeFileSync(join(TMP, 'README.md'), '# Hello', 'utf-8');
 
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: '.', maxDepth: null, includeFiles: null, maxEntries: null },
       { toolCallId: 'test', messages: [] },
@@ -1235,7 +1240,7 @@ describe('directoryTree tool', () => {
     mkdirSync(join(TMP, 'a', 'b', 'c'), { recursive: true });
     writeFileSync(join(TMP, 'a', 'b', 'c', 'deep.txt'), 'deep', 'utf-8');
 
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: '.', maxDepth: 1, includeFiles: null, maxEntries: null },
       { toolCallId: 'test', messages: [] },
@@ -1254,7 +1259,7 @@ describe('directoryTree tool', () => {
     writeFileSync(join(TMP, 'src', 'app.ts'), 'code', 'utf-8');
     writeFileSync(join(TMP, 'readme.md'), 'hi', 'utf-8');
 
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: '.', maxDepth: null, includeFiles: false, maxEntries: null },
       { toolCallId: 'test', messages: [] },
@@ -1271,7 +1276,7 @@ describe('directoryTree tool', () => {
       writeFileSync(join(TMP, `file${i}.txt`), `content ${i}`, 'utf-8');
     }
 
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: '.', maxDepth: null, includeFiles: null, maxEntries: 5 },
       { toolCallId: 'test', messages: [] },
@@ -1284,7 +1289,7 @@ describe('directoryTree tool', () => {
   });
 
   it('returns error for non-existent path', async () => {
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: 'nonexistent', maxDepth: null, includeFiles: null, maxEntries: null },
       { toolCallId: 'test', messages: [] },
@@ -1297,7 +1302,7 @@ describe('directoryTree tool', () => {
   it('handles empty directory', async () => {
     mkdirSync(join(TMP, 'empty'), { recursive: true });
 
-    const tool = directoryTree(TMP);
+    const tool = directoryTree(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { path: 'empty', maxDepth: null, includeFiles: null, maxEntries: null },
       { toolCallId: 'test', messages: [] },
@@ -1313,7 +1318,7 @@ describe('directoryTree tool', () => {
 
 describe('webSearch tool', () => {
   it('returns error for unreachable SearXNG instance', async () => {
-    const tool = webSearch('http://localhost:1');
+    const tool = webSearch('http://localhost:1') as unknown as AnyTool;
     const result = await tool.execute(
       { query: 'test', categories: null, language: null, maxResults: null },
       { toolCallId: 'test', messages: [] },
@@ -1324,7 +1329,7 @@ describe('webSearch tool', () => {
   });
 
   it('handles timeout', async () => {
-    const tool = webSearch('https://httpbin.org/delay/10');
+    const tool = webSearch('https://httpbin.org/delay/10') as unknown as AnyTool;
     const result = await tool.execute(
       { query: 'test', categories: null, language: null, maxResults: null },
       { toolCallId: 'test', messages: [] },
@@ -1351,7 +1356,7 @@ describe('diffFiles tool', () => {
   it('diffs two files with changes', async () => {
     writeFileSync(join(TMP, 'a.txt'), 'line1\nline2\nline3\n', 'utf-8');
     writeFileSync(join(TMP, 'b.txt'), 'line1\nmodified\nline3\n', 'utf-8');
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, filePath1: 'a.txt', filePath2: 'b.txt' },
       ctx,
@@ -1368,7 +1373,7 @@ describe('diffFiles tool', () => {
   it('reports identical files', async () => {
     writeFileSync(join(TMP, 'same1.txt'), 'hello\nworld\n', 'utf-8');
     writeFileSync(join(TMP, 'same2.txt'), 'hello\nworld\n', 'utf-8');
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, filePath1: 'same1.txt', filePath2: 'same2.txt' },
       ctx,
@@ -1380,7 +1385,7 @@ describe('diffFiles tool', () => {
   });
 
   it('diffs raw strings', async () => {
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, content1: 'foo\nbar\n', content2: 'foo\nbaz\n' },
       ctx,
@@ -1393,7 +1398,7 @@ describe('diffFiles tool', () => {
   });
 
   it('returns error for non-existent file', async () => {
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, filePath1: 'nope.txt', filePath2: 'also-nope.txt' },
       ctx,
@@ -1404,7 +1409,7 @@ describe('diffFiles tool', () => {
   });
 
   it('returns error for invalid arguments', async () => {
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute({ ...defaults }, ctx);
 
     expect(result.success).toBe(false);
@@ -1417,7 +1422,7 @@ describe('diffFiles tool', () => {
     writeFileSync(join(TMP, 'ctx-a.txt'), lines, 'utf-8');
     writeFileSync(join(TMP, 'ctx-b.txt'), modified, 'utf-8');
 
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, filePath1: 'ctx-a.txt', filePath2: 'ctx-b.txt', contextLines: 1 },
       ctx,
@@ -1433,7 +1438,7 @@ describe('diffFiles tool', () => {
   it('ignores whitespace when requested', async () => {
     writeFileSync(join(TMP, 'ws-a.txt'), 'hello  \nworld\n', 'utf-8');
     writeFileSync(join(TMP, 'ws-b.txt'), 'hello\nworld\n', 'utf-8');
-    const tool = diffFiles(TMP);
+    const tool = diffFiles(TMP) as unknown as AnyTool;
     const result = await tool.execute(
       { ...defaults, filePath1: 'ws-a.txt', filePath2: 'ws-b.txt', ignoreWhitespace: true },
       ctx,

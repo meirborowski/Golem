@@ -227,7 +227,7 @@ export const codeOutline = (cwd: string) =>
   tool({
     description:
       'Extract an outline of symbols (functions, classes, types, etc.) from a source file with line numbers. Supports TypeScript, JavaScript, Python, Go, Rust, Java, C/C++, Ruby, PHP, C#, Kotlin, Swift, Scala, Dart, Lua, Shell, and Elixir. Use this to understand file structure without reading the entire file.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath: z.string().describe('Path to the source file (relative to cwd or absolute)'),
     }),
     execute: async ({ filePath }) => {

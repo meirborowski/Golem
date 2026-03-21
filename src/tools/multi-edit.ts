@@ -7,7 +7,7 @@ export const multiEdit = (cwd: string) =>
   tool({
     description:
       'Apply multiple find-and-replace edits to a single file in one call. Edits are applied sequentially — each edit operates on the result of the previous one. If any edit fails, the file is left unchanged.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath: z.string().describe('Path to the file to edit (relative to cwd or absolute)'),
       edits: z
         .array(

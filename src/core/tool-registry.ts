@@ -1,8 +1,50 @@
+import { z } from 'zod';
 import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles } from '../tools/index.js';
 import type { ResolvedConfig, ApprovalCallback } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolSet = Record<string, any>;
+
+/**
+ * Wrap a tool's parameters schema so that missing nullable properties
+ * default to null before Zod validation. This keeps all properties in the
+ * JSON schema's `required` array (satisfying OpenAI) while still handling
+ * providers like Gemini that omit optional parameters entirely.
+ */
+function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[string] {
+  const schema = toolDef.inputSchema;
+  if (!(schema instanceof z.ZodObject)) return toolDef;
+
+  const shape = schema.shape as Record<string, z.ZodTypeAny>;
+  const nullableKeys: string[] = [];
+
+  for (const [key, fieldSchema] of Object.entries(shape)) {
+    // Detect z.union([..., z.null()]) patterns
+    if (fieldSchema instanceof z.ZodUnion) {
+      const options = (fieldSchema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>).options;
+      if (options.some((opt: z.ZodTypeAny) => opt instanceof z.ZodNull)) {
+        nullableKeys.push(key);
+      }
+    }
+  }
+
+  if (nullableKeys.length === 0) return toolDef;
+
+  const wrapped = z.preprocess((val: unknown) => {
+    if (val && typeof val === 'object') {
+      const obj = { ...(val as Record<string, unknown>) };
+      for (const key of nullableKeys) {
+        if (!(key in obj) || obj[key] === undefined) {
+          obj[key] = null;
+        }
+      }
+      return obj;
+    }
+    return val;
+  }, schema);
+
+  return { ...toolDef, inputSchema: wrapped };
+}
 
 /** Tools that always require approval for every invocation. */
 const TOOLS_REQUIRING_APPROVAL = new Set(['bash']);
@@ -71,7 +113,7 @@ export function createBuiltinTools(
   const searxngBaseUrl =
     config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
 
-  const allTools: ToolSet = {
+  const rawTools: ToolSet = {
     readFile: readFile(cwd),
     writeFile: writeFile(cwd),
     editFile: editFile(cwd),
@@ -91,6 +133,12 @@ export function createBuiltinTools(
     webSearch: webSearch(searxngBaseUrl),
     diffFiles: diffFiles(cwd),
   };
+
+  // Normalize nullable params for cross-provider compatibility
+  const allTools: ToolSet = {};
+  for (const [name, toolDef] of Object.entries(rawTools)) {
+    allTools[name] = normalizeNullableParams(toolDef);
+  }
 
   if (onApprovalNeeded) {
     for (const name of TOOLS_REQUIRING_APPROVAL) {

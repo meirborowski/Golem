@@ -1,4 +1,4 @@
-import type { CoreMessage, LanguageModel } from 'ai';
+import type { ModelMessage, LanguageModel } from 'ai';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -125,4 +125,6 @@ export interface SavedSession {
 
 // ── Re-export ───────────────────────────────────────────────────────────────
 
-export type { CoreMessage, LanguageModel };
+export type { ModelMessage, LanguageModel };
+/** @deprecated Use ModelMessage */
+export type CoreMessage = ModelMessage;

@@ -6,7 +6,7 @@ export const editFile = (cwd: string) =>
   tool({
     description:
       'Apply a text replacement to a file. The oldText must match exactly and uniquely in the file. Provide enough surrounding context to ensure a unique match.',
-    parameters: z.object({
+    inputSchema: z.object({
       filePath: z.string().describe('Path to the file to edit'),
       oldText: z.string().describe('Exact text to find (must match uniquely in the file)'),
       newText: z.string().describe('Replacement text'),

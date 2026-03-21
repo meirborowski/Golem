@@ -17,19 +17,16 @@ export const webSearch = (baseUrl: string) =>
   tool({
     description:
       'Search the web using SearXNG. Returns titles, URLs, and snippets. Use for looking up documentation, APIs, error messages, or any current information.',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('The search query'),
       categories: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Search categories: "general", "images", "news", "science", "it", etc. Null defaults to "general".'),
       language: z
         .union([z.string(), z.null()])
-        .default(null)
         .describe('Language code, e.g. "en", "he", "de". Null defaults to "en".'),
       maxResults: z
         .union([z.number(), z.null()])
-        .default(null)
         .describe('Maximum number of results to return. Null defaults to 10.'),
     }),
     execute: async ({ query, categories: rawCategories, language: rawLanguage, maxResults: rawMax }) => {
