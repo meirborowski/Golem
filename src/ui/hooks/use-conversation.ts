@@ -7,6 +7,17 @@ import type { ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessage
 import type { ModelMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
+const MAX_RESULT_CHARS = 200; // Truncate tool results stored in memory
+
+/** Shrink a tool result to avoid holding large file contents in memory. */
+function summarizeToolResult(result: unknown): unknown {
+  if (result == null) return result;
+  const str = typeof result === 'string' ? result : JSON.stringify(result);
+  if (str.length <= MAX_RESULT_CHARS) return result;
+  return typeof result === 'string'
+    ? str.slice(0, MAX_RESULT_CHARS) + '… (truncated)'
+    : { _summary: str.slice(0, MAX_RESULT_CHARS) + '… (truncated)' };
+}
 
 export function useConversation() {
   const { state, dispatch, config, activeModel } = useAppContext();
@@ -121,7 +132,7 @@ export function useConversation() {
                   id: event.toolCallId,
                   toolName: event.toolName,
                   args: event.args,
-                  status: 'running',
+                  status: 'running' as const,
                 });
                 dispatch({
                   type: 'AGENT_TOOL_START',
@@ -146,7 +157,8 @@ export function useConversation() {
               if (isBackground) {
                 const tc = collectedToolCalls.find((t) => t.id === event.toolCallId);
                 if (tc) {
-                  tc.result = event.result;
+                  // Store a truncated summary to avoid holding large file contents in memory
+                  tc.result = summarizeToolResult(event.result);
                   tc.status = 'completed';
                 }
                 dispatch({

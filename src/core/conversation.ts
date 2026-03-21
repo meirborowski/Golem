@@ -39,7 +39,7 @@ export class ConversationEngine {
         system: this.buildSystemPrompt(),
         messages: this.messages,
         tools: this.tools,
-        stopWhen: stepCountIs(1000),
+        stopWhen: stepCountIs(50),
         maxOutputTokens: this.config.maxTokens,
       };
       if (this.config.temperature !== undefined) {
