@@ -8,7 +8,7 @@ const DEFAULTS: ResolvedConfig = {
   model: '',
   maxTokens: 4096,
   contextWindow: 128_000, // sensible default; most modern models support 128k
-  temperature: 0.7,
+  temperature: undefined, // omitted by default; reasoning models don't support it
   debug: false,
   cwd: process.cwd(),
   providers: {},

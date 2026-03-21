@@ -32,15 +32,20 @@ export class ConversationEngine {
     logger.info('Sending message', { messageCount: this.messages.length });
 
     try {
-      const result = streamText({
+      // Only pass temperature when explicitly configured — reasoning models
+      // (e.g. o1, o3) don't support it and the SDK logs a noisy warning.
+      const streamOptions: Parameters<typeof streamText>[0] = {
         model: this.model,
         system: this.buildSystemPrompt(),
         messages: this.messages,
         tools: this.tools,
         stopWhen: stepCountIs(1000),
         maxOutputTokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-      });
+      };
+      if (this.config.temperature !== undefined) {
+        streamOptions.temperature = this.config.temperature;
+      }
+      const result = streamText(streamOptions);
 
       for await (const part of result.fullStream) {
         switch (part.type) {

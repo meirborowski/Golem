@@ -3,6 +3,22 @@ import { Box, Text, useInput } from 'ink';
 import { useApproval } from '../hooks/use-approval.js';
 import type { PendingApproval } from '../../core/types.js';
 
+function formatApprovalCommand(toolName: string, args: unknown): string {
+  const obj = args as Record<string, unknown>;
+  if (toolName === 'bash' && typeof obj?.command === 'string') {
+    return obj.command;
+  }
+  if (toolName === 'git' && typeof obj?.subcommand === 'string') {
+    const gitArgs = typeof obj.args === 'string' ? ` ${obj.args}` : '';
+    return `git ${obj.subcommand}${gitArgs}`;
+  }
+  // Generic fallback: toolName(key=value, ...)
+  const pairs = Object.entries(obj ?? {})
+    .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    .join(', ');
+  return `${toolName}(${pairs})`;
+}
+
 interface ApprovalPromptProps {
   approval: PendingApproval;
 }
@@ -18,7 +34,7 @@ export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
     }
   });
 
-  const command = (approval.args as { command?: string })?.command ?? JSON.stringify(approval.args);
+  const command = formatApprovalCommand(approval.toolName, approval.args);
 
   return (
     <Box flexDirection="column" marginY={1} marginLeft={2}>

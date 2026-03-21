@@ -75,6 +75,7 @@ export function useConversation() {
         errorCount: 0,
         finalText: '',
         toolCalls: [],
+        lastError: '',
       };
 
       if (!engineRef.current) return turnResult;
@@ -175,6 +176,7 @@ export function useConversation() {
                 flushTextBuffer();
               }
               turnResult.errorCount++;
+              turnResult.lastError = event.error.message;
               if (!isBackground) {
                 dispatch({ type: 'SET_ERROR', error: event.error.message });
               }
@@ -185,12 +187,11 @@ export function useConversation() {
         if (!isBackground) {
           flushTextBuffer();
         }
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
         turnResult.errorCount++;
+        turnResult.lastError = errMsg;
         if (!isBackground) {
-          dispatch({
-            type: 'SET_ERROR',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          dispatch({ type: 'SET_ERROR', error: errMsg });
         }
       }
 

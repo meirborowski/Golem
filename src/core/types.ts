@@ -25,7 +25,7 @@ export interface ResolvedConfig {
   apiKey?: string;
   maxTokens: number;
   contextWindow: number;
-  temperature: number;
+  temperature: number | undefined;
   debug: boolean;
   cwd: string;
   providers: Record<string, ProviderConfig>;
@@ -144,6 +144,8 @@ export interface TurnResult {
   finalText: string;
   /** Tool calls executed during this turn (populated in background mode). */
   toolCalls: ToolCallInfo[];
+  /** Last error message from this turn (populated in background mode). */
+  lastError: string;
 }
 
 export interface SendMessageOptions {

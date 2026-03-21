@@ -6,7 +6,7 @@ import meow from 'meow';
 import { App } from './app.js';
 import { resolveConfig } from './core/config.js';
 import { listProviders } from './core/provider-registry.js';
-import { initLogger } from './utils/logger.js';
+import { initLogger, logger } from './utils/logger.js';
 import { ensureSearxng, cleanupSearxng } from './utils/searxng.js';
 
 const cli = meow(
@@ -48,6 +48,39 @@ const config = resolveConfig({
 
 // Initialize debug logger
 initLogger(config.debug);
+
+// Suppress AI SDK warnings that would corrupt Ink's terminal output.
+// The SDK prints raw JSON and warning text to stdout/stderr which breaks
+// the terminal UI. Redirect known noisy patterns to the file logger.
+const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+const suppressPatterns = [
+  'AI SDK Warning',
+  '"type":"error"',
+  'sequence_number',
+];
+
+function shouldSuppress(chunk: unknown): boolean {
+  if (typeof chunk !== 'string') return false;
+  return suppressPatterns.some((p) => chunk.includes(p));
+}
+
+process.stdout.write = (chunk: unknown, ...args: unknown[]): boolean => {
+  if (shouldSuppress(chunk)) {
+    logger.warn('Suppressed stdout', { text: String(chunk).slice(0, 200) });
+    return true;
+  }
+  return (originalStdoutWrite as (...a: unknown[]) => boolean)(chunk, ...args);
+};
+
+process.stderr.write = (chunk: unknown, ...args: unknown[]): boolean => {
+  if (shouldSuppress(chunk)) {
+    logger.warn('Suppressed stderr', { text: String(chunk).slice(0, 200) });
+    return true;
+  }
+  return (originalStderrWrite as (...a: unknown[]) => boolean)(chunk, ...args);
+};
 
 // Start SearXNG container if not already running (non-blocking on failure)
 const searxngBaseUrl =
