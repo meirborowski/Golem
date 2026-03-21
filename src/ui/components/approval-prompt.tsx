@@ -12,11 +12,30 @@ function formatApprovalCommand(toolName: string, args: unknown): string {
     const gitArgs = typeof obj.args === 'string' ? ` ${obj.args}` : '';
     return `git ${obj.subcommand}${gitArgs}`;
   }
-  // Generic fallback: toolName(key=value, ...)
   const pairs = Object.entries(obj ?? {})
     .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
     .join(', ');
   return `${toolName}(${pairs})`;
+}
+
+function getApprovalTitle(toolName: string): string {
+  if (toolName === 'bash') {
+    return 'Run shell command?';
+  }
+  if (toolName === 'git') {
+    return 'Run git operation?';
+  }
+  return 'Approve tool call?';
+}
+
+function getApprovalWarning(toolName: string): string {
+  if (toolName === 'bash') {
+    return 'This command will run in your working directory and may modify files or execute arbitrary code.';
+  }
+  if (toolName === 'git') {
+    return 'This git action may modify repository state, history, or files.';
+  }
+  return 'This tool call may affect your workspace.';
 }
 
 interface ApprovalPromptProps {
@@ -35,13 +54,26 @@ export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
   });
 
   const command = formatApprovalCommand(approval.toolName, approval.args);
+  const title = getApprovalTitle(approval.toolName);
+  const warning = getApprovalWarning(approval.toolName);
 
   return (
     <Box flexDirection="column" marginY={1} marginLeft={2}>
       <Box borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column">
         <Text color="yellow" bold>
-          Approve command?
+          {title}
         </Text>
+        <Box marginTop={1}>
+          <Text color="yellow">Tool: </Text>
+          <Text>{approval.toolName}</Text>
+        </Box>
+        <Box>
+          <Text color="yellow">Call: </Text>
+          <Text>{approval.toolCallId}</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>{warning}</Text>
+        </Box>
         <Box marginTop={1}>
           <Text dimColor>$ </Text>
           <Text>{command}</Text>
@@ -49,9 +81,13 @@ export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
       </Box>
       <Box marginTop={1}>
         <Text dimColor>Press </Text>
-        <Text color="green" bold>Y</Text>
+        <Text color="green" bold>
+          Y
+        </Text>
         <Text dimColor> to approve, </Text>
-        <Text color="red" bold>N</Text>
+        <Text color="red" bold>
+          N
+        </Text>
         <Text dimColor> to deny</Text>
       </Box>
     </Box>
