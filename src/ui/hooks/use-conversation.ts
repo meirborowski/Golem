@@ -2,7 +2,8 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools } from '../../core/tool-registry.js';
-import type { ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessageOptions } from '../../core/types.js';
+import { formatArgs } from '../../utils/format-args.js';
+import type { ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessageOptions, ToolCallInfo } from '../../core/types.js';
 import type { ModelMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
@@ -66,74 +67,135 @@ export function useConversation() {
 
   const sendMessage = useCallback(
     async (input: string, options?: SendMessageOptions): Promise<TurnResult> => {
-      const turnResult: TurnResult = { hadToolCalls: false, agentDoneCalled: false, hadTextOutput: false, errorCount: 0 };
+      const isBackground = options?.background === true;
+      const turnResult: TurnResult = {
+        hadToolCalls: false,
+        agentDoneCalled: false,
+        hadTextOutput: false,
+        errorCount: 0,
+        finalText: '',
+        toolCalls: [],
+      };
 
-      if (!engineRef.current || state.isStreaming) return turnResult;
+      if (!engineRef.current) return turnResult;
 
-      if (!options?.silent) {
-        dispatch({ type: 'ADD_USER_MESSAGE', content: input });
+      // In background mode, isStreaming is never set, so skip the guard
+      if (!isBackground && state.isStreaming) return turnResult;
+
+      if (!isBackground) {
+        if (!options?.silent) {
+          dispatch({ type: 'ADD_USER_MESSAGE', content: input });
+        }
+        dispatch({ type: 'START_STREAMING' });
+        dispatch({ type: 'ADD_ASSISTANT_MESSAGE' });
       }
-      dispatch({ type: 'START_STREAMING' });
-      dispatch({ type: 'ADD_ASSISTANT_MESSAGE' });
+
+      // Local collectors for background mode
+      let collectedText = '';
+      const collectedToolCalls: ToolCallInfo[] = [];
 
       try {
         for await (const event of engineRef.current.sendMessage(input)) {
           switch (event.type) {
             case 'text-delta':
               turnResult.hadTextOutput = true;
-              if (!options?.suppressText) {
+              if (isBackground) {
+                collectedText += event.text;
+              } else if (!options?.suppressText) {
                 appendText(event.text);
               }
               break;
 
-            case 'tool-call':
-              // Flush any pending text before showing tool call
-              flushTextBuffer();
+            case 'tool-call': {
+              if (!isBackground) {
+                flushTextBuffer();
+              }
               turnResult.hadToolCalls = true;
               if (event.toolName === 'agentDone') {
                 turnResult.agentDoneCalled = true;
               }
-              dispatch({
-                type: 'ADD_TOOL_CALL',
-                toolCall: {
+
+              if (isBackground) {
+                collectedToolCalls.push({
                   id: event.toolCallId,
                   toolName: event.toolName,
                   args: event.args,
                   status: 'running',
-                },
-              });
+                });
+                dispatch({
+                  type: 'AGENT_TOOL_START',
+                  toolName: event.toolName,
+                  argsPreview: formatArgs(event.args),
+                });
+              } else {
+                dispatch({
+                  type: 'ADD_TOOL_CALL',
+                  toolCall: {
+                    id: event.toolCallId,
+                    toolName: event.toolName,
+                    args: event.args,
+                    status: 'running',
+                  },
+                });
+              }
               break;
+            }
 
-            case 'tool-result':
-              dispatch({
-                type: 'UPDATE_TOOL_CALL',
-                toolCallId: event.toolCallId,
-                update: { result: event.result, status: 'completed' },
-              });
+            case 'tool-result': {
+              if (isBackground) {
+                const tc = collectedToolCalls.find((t) => t.id === event.toolCallId);
+                if (tc) {
+                  tc.result = event.result;
+                  tc.status = 'completed';
+                }
+                dispatch({
+                  type: 'AGENT_TOOL_DONE',
+                  toolName: event.toolName,
+                  status: 'completed',
+                });
+              } else {
+                dispatch({
+                  type: 'UPDATE_TOOL_CALL',
+                  toolCallId: event.toolCallId,
+                  update: { result: event.result, status: 'completed' },
+                });
+              }
               break;
+            }
 
             case 'finish':
-              // Flush any remaining text before finishing
-              flushTextBuffer();
-              dispatch({ type: 'FINISH_STREAMING', usage: event.usage });
+              if (!isBackground) {
+                flushTextBuffer();
+                dispatch({ type: 'FINISH_STREAMING', usage: event.usage });
+              }
               break;
 
             case 'error':
-              flushTextBuffer();
+              if (!isBackground) {
+                flushTextBuffer();
+              }
               turnResult.errorCount++;
-              dispatch({ type: 'SET_ERROR', error: event.error.message });
+              if (!isBackground) {
+                dispatch({ type: 'SET_ERROR', error: event.error.message });
+              }
               break;
           }
         }
       } catch (error) {
-        flushTextBuffer();
+        if (!isBackground) {
+          flushTextBuffer();
+        }
         turnResult.errorCount++;
-        dispatch({
-          type: 'SET_ERROR',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        if (!isBackground) {
+          dispatch({
+            type: 'SET_ERROR',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
 
+      turnResult.finalText = collectedText;
+      turnResult.toolCalls = collectedToolCalls;
       return turnResult;
     },
     [state.isStreaming, dispatch, appendText, flushTextBuffer],

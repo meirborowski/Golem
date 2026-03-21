@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { ToolCallInfo } from '../../core/types.js';
+import { formatArgs } from '../../utils/format-args.js';
 
 interface ToolCallDisplayProps {
   toolCall: ToolCallInfo;
@@ -41,18 +42,4 @@ export function ToolCallDisplay({ toolCall }: ToolCallDisplayProps) {
       )}
     </Box>
   );
-}
-
-function formatArgs(args: unknown): string {
-  if (typeof args !== 'object' || args === null) return String(args);
-  const obj = args as Record<string, unknown>;
-
-  // Show key arguments concisely
-  const parts: string[] = [];
-  if ('filePath' in obj) parts.push(String(obj['filePath']));
-  if ('pattern' in obj) parts.push(`"${String(obj['pattern'])}"`);
-  if ('command' in obj) parts.push(`$ ${String(obj['command'])}`);
-  if ('glob' in obj) parts.push(String(obj['glob']));
-
-  return parts.length > 0 ? parts.join(', ') : JSON.stringify(args).slice(0, 80);
 }

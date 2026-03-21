@@ -328,7 +328,7 @@ export function ChatView() {
           <AgentProgress agentMode={state.agentMode} />
         )}
 
-        {isStreaming && !state.pendingApproval && <Spinner />}
+        {isStreaming && !state.pendingApproval && !state.agentMode && <Spinner />}
 
         {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
 
@@ -340,7 +340,7 @@ export function ChatView() {
           </Box>
         )}
 
-        <InputBar onSubmit={handleSubmit} isDisabled={isStreaming} />
+        <InputBar onSubmit={handleSubmit} isDisabled={isStreaming || state.agentMode?.status === 'running'} />
 
         <StatusBar provider={activeProvider} model={activeModelName} tokenUsage={tokenUsage} />
       </Box>

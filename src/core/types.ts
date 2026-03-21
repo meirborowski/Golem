@@ -74,11 +74,18 @@ export interface ToolCallInfo {
 
 // ── Agent Mode ──────────────────────────────────────────────────────────────
 
+export interface AgentToolActivity {
+  toolName: string;
+  argsPreview: string;
+  status: 'running' | 'completed' | 'error';
+}
+
 export interface AgentModeState {
   task: string;
   currentTurn: number;
   maxTurns: number;
   status: 'running' | 'completed' | 'cancelled' | 'error';
+  toolActivity: AgentToolActivity[];
 }
 
 // ── App State ───────────────────────────────────────────────────────────────
@@ -121,7 +128,10 @@ export type AppAction =
   | { type: 'LOAD_SESSION'; messages: ChatMessage[]; tokenUsage: TokenUsage }
   | { type: 'START_AGENT_MODE'; task: string; maxTurns: number }
   | { type: 'AGENT_TURN_COMPLETE' }
-  | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error'; summary?: string };
+  | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error' }
+  | { type: 'AGENT_TOOL_START'; toolName: string; argsPreview: string }
+  | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error' }
+  | { type: 'SET_AGENT_FINAL_MESSAGE'; content: string; toolCalls?: ToolCallInfo[] };
 
 // ── Turn Result ─────────────────────────────────────────────────────────────
 
@@ -130,6 +140,10 @@ export interface TurnResult {
   agentDoneCalled: boolean;
   hadTextOutput: boolean;
   errorCount: number;
+  /** Accumulated text from this turn (populated in background mode). */
+  finalText: string;
+  /** Tool calls executed during this turn (populated in background mode). */
+  toolCalls: ToolCallInfo[];
 }
 
 export interface SendMessageOptions {
@@ -137,6 +151,8 @@ export interface SendMessageOptions {
   silent?: boolean;
   /** If true, suppress text-delta dispatches to the UI (still tracked in TurnResult). */
   suppressText?: boolean;
+  /** If true, run in background: skip all UI dispatches, collect results in TurnResult. */
+  background?: boolean;
 }
 
 // ── Session ────────────────────────────────────────────────────────────────

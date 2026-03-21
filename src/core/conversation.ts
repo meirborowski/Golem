@@ -76,9 +76,16 @@ export class ConversationEngine {
             }
             break;
 
-          case 'error':
-            yield { type: 'error', error: new Error(String(part.error)) };
+          case 'error': {
+            const errMsg =
+              part.error instanceof Error
+                ? part.error.message
+                : typeof part.error === 'string'
+                  ? part.error
+                  : JSON.stringify(part.error);
+            yield { type: 'error', error: new Error(errMsg) };
             break;
+          }
         }
       }
 

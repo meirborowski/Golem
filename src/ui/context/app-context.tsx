@@ -109,6 +109,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           currentTurn: 0,
           maxTurns: action.maxTurns,
           status: 'running',
+          toolActivity: [],
         },
       };
 
@@ -126,6 +127,50 @@ function appReducer(state: AppState, action: AppAction): AppState {
         agentMode: state.agentMode
           ? { ...state.agentMode, status: action.status }
           : null,
+      };
+
+    case 'AGENT_TOOL_START': {
+      if (!state.agentMode) return state;
+      return {
+        ...state,
+        agentMode: {
+          ...state.agentMode,
+          toolActivity: [
+            ...state.agentMode.toolActivity,
+            { toolName: action.toolName, argsPreview: action.argsPreview, status: 'running' as const },
+          ],
+        },
+      };
+    }
+
+    case 'AGENT_TOOL_DONE': {
+      if (!state.agentMode) return state;
+      const toolActivity = [...state.agentMode.toolActivity];
+      // Update the last matching running tool
+      for (let i = toolActivity.length - 1; i >= 0; i--) {
+        if (toolActivity[i].toolName === action.toolName && toolActivity[i].status === 'running') {
+          toolActivity[i] = { ...toolActivity[i], status: action.status };
+          break;
+        }
+      }
+      return {
+        ...state,
+        agentMode: { ...state.agentMode, toolActivity },
+      };
+    }
+
+    case 'SET_AGENT_FINAL_MESSAGE':
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            role: 'assistant' as const,
+            content: action.content,
+            toolCalls: action.toolCalls,
+            timestamp: Date.now(),
+          },
+        ],
       };
 
     default:

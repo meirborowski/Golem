@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { useConversation } from './use-conversation.js';
+import type { ToolCallInfo } from '../../core/types.js';
 
 const MAX_TURNS = 20;
 const MAX_CONSECUTIVE_ERRORS = 3;
@@ -13,12 +14,17 @@ export function useAgent() {
   const sendAgentMessage = useCallback(
     async (input: string) => {
       cancelledRef.current = false;
+
+      // Show the user message once in the UI
+      dispatch({ type: 'ADD_USER_MESSAGE', content: input });
       dispatch({ type: 'START_AGENT_MODE', task: input, maxTurns: MAX_TURNS });
 
-      // First turn: send the user's actual message
-      let turnResult = await sendMessage(input);
+      // All turns run in background — no messages dispatched to the chat
+      let turnResult = await sendMessage(input, { silent: true, background: true });
       let turn = 1;
       let consecutiveErrors = 0;
+      let lastText = turnResult.finalText;
+      const allToolCalls: ToolCallInfo[] = [...turnResult.toolCalls];
 
       // Auto-continuation loop
       while (turn < MAX_TURNS && !cancelledRef.current) {
@@ -26,22 +32,18 @@ export function useAgent() {
 
         // Stop if agentDone was called
         if (turnResult.agentDoneCalled) {
-          dispatch({ type: 'STOP_AGENT_MODE', status: 'completed' });
-          return;
+          break;
         }
 
         // Stop if no tool calls — pure text Q&A
         if (!turnResult.hadToolCalls) {
-          dispatch({ type: 'STOP_AGENT_MODE', status: 'completed' });
-          return;
+          break;
         }
 
-        // Stop if the AI used tools AND produced a text response.
-        // This means the AI gathered info (tools) and answered (text) — task is done.
-        // Only continue if the turn was pure tool calls with no text summary.
+        // Stop if the AI used tools AND produced a text response —
+        // it gathered info (tools) and answered (text), task is done.
         if (turnResult.hadTextOutput) {
-          dispatch({ type: 'STOP_AGENT_MODE', status: 'completed' });
-          return;
+          break;
         }
 
         // Track consecutive errors
@@ -52,32 +54,32 @@ export function useAgent() {
         }
 
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          const errorText = lastText || 'Agent stopped due to repeated errors.';
+          dispatch({ type: 'SET_AGENT_FINAL_MESSAGE', content: errorText, toolCalls: allToolCalls });
           dispatch({ type: 'STOP_AGENT_MODE', status: 'error' });
           return;
         }
 
-        // Show a subtle continuation message
-        dispatch({
-          type: 'ADD_SYSTEM_MESSAGE',
-          content: `[Continuing — turn ${turn + 1}/${MAX_TURNS}]`,
-        });
-
-        // Continue the agent — silent (no user message shown), suppress text
+        // Continue in background — completely silent
         turnResult = await sendMessage(
           'Continue working on the task. If you are done, call the agentDone tool.',
-          { silent: true, suppressText: true },
+          { silent: true, background: true },
         );
+        if (turnResult.finalText) {
+          lastText = turnResult.finalText;
+        }
+        allToolCalls.push(...turnResult.toolCalls);
         turn++;
       }
 
-      // Exited the loop — either max turns or cancelled
+      // Emit the single final assistant message
       if (cancelledRef.current) {
+        const cancelText = lastText || 'Agent cancelled.';
+        dispatch({ type: 'SET_AGENT_FINAL_MESSAGE', content: cancelText, toolCalls: allToolCalls });
         dispatch({ type: 'STOP_AGENT_MODE', status: 'cancelled' });
       } else {
-        dispatch({
-          type: 'ADD_SYSTEM_MESSAGE',
-          content: `[Agent reached maximum of ${MAX_TURNS} turns]`,
-        });
+        const finalText = lastText || 'Task completed.';
+        dispatch({ type: 'SET_AGENT_FINAL_MESSAGE', content: finalText, toolCalls: allToolCalls });
         dispatch({ type: 'STOP_AGENT_MODE', status: 'completed' });
       }
     },
