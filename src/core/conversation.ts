@@ -265,6 +265,22 @@ export class ConversationEngine {
     parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
     parts.push('- codeOutline: Extract symbol outline (functions, classes, types) from a source file');
     parts.push('- rename: Rename or move files and directories');
+    parts.push('- directoryTree: Visualize directory structure recursively');
+    parts.push('- webSearch: Search the web via SearXNG');
+    parts.push('- diffFiles: Compare files, git HEAD versions, or raw strings');
+    parts.push('- agentDone: Signal that you have completed the task');
+
+    parts.push('');
+    parts.push('## Agent Behavior');
+    parts.push('You operate autonomously. When given a task that requires making changes:');
+    parts.push('1. Use `think` to plan your approach before acting.');
+    parts.push('2. Execute step by step — read files before editing them.');
+    parts.push('3. Verify your changes (re-read modified files, run tests if applicable).');
+    parts.push('4. Call `agentDone` with a summary when the task is fully complete.');
+    parts.push('5. If a step fails, analyze the error and try an alternative approach.');
+    parts.push('6. Do not ask for clarification — make reasonable decisions and proceed.');
+    parts.push('');
+    parts.push('For questions or explanations (even if you read files to answer), just respond with your answer directly. Do NOT call agentDone for questions — only for tasks that modify files or produce artifacts.');
 
     return parts.join('\n');
   }

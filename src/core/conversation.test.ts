@@ -103,21 +103,22 @@ describe('ConversationEngine', () => {
   });
 
   describe('context window truncation', () => {
-    it('truncates old messages when context is exceeded', () => {
-      // Use a tiny context window
-      const smallConfig: ResolvedConfig = { ...config, contextWindow: 800, maxTokens: 100 };
+    it('truncates old messages when context is exceeded', async () => {
+      // Use a context window large enough for the system prompt but small for messages
+      const smallConfig: ResolvedConfig = { ...config, contextWindow: 4000, maxTokens: 100 };
       const smallEngine = new ConversationEngine(fakeModel, fakeTools, smallConfig);
 
       smallEngine.loadHistory([
-        { role: 'user', content: 'A '.repeat(100) },
-        { role: 'assistant', content: 'B '.repeat(100) },
-        { role: 'user', content: 'C '.repeat(100) },
-        { role: 'assistant', content: 'D '.repeat(100) },
+        { role: 'user', content: 'A '.repeat(2000) },
+        { role: 'assistant', content: 'B '.repeat(2000) },
+        { role: 'user', content: 'C '.repeat(2000) },
+        { role: 'assistant', content: 'D '.repeat(2000) },
       ]);
 
       // sendMessage triggers truncation — it will fail on streamText but that's ok
-      const gen = smallEngine.sendMessage('E '.repeat(50));
-      gen.next().catch(() => {});
+      const gen = smallEngine.sendMessage('E '.repeat(500));
+      // Await the first step so truncation runs before we check
+      await gen.next().catch(() => {});
 
       const msgs = smallEngine.getMessages();
       // Should have fewer messages than 5 (4 loaded + 1 new)

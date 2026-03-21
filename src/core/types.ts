@@ -72,6 +72,15 @@ export interface ToolCallInfo {
   status: 'pending' | 'running' | 'completed' | 'error';
 }
 
+// ── Agent Mode ──────────────────────────────────────────────────────────────
+
+export interface AgentModeState {
+  task: string;
+  currentTurn: number;
+  maxTurns: number;
+  status: 'running' | 'completed' | 'cancelled' | 'error';
+}
+
 // ── App State ───────────────────────────────────────────────────────────────
 
 export interface AppState {
@@ -80,6 +89,7 @@ export interface AppState {
   error: string | null;
   pendingApproval: PendingApproval | null;
   tokenUsage: TokenUsage;
+  agentMode: AgentModeState | null;
 }
 
 export interface PendingApproval {
@@ -108,7 +118,26 @@ export type AppAction =
   | { type: 'START_STREAMING' }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'ADD_SYSTEM_MESSAGE'; content: string }
-  | { type: 'LOAD_SESSION'; messages: ChatMessage[]; tokenUsage: TokenUsage };
+  | { type: 'LOAD_SESSION'; messages: ChatMessage[]; tokenUsage: TokenUsage }
+  | { type: 'START_AGENT_MODE'; task: string; maxTurns: number }
+  | { type: 'AGENT_TURN_COMPLETE' }
+  | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error'; summary?: string };
+
+// ── Turn Result ─────────────────────────────────────────────────────────────
+
+export interface TurnResult {
+  hadToolCalls: boolean;
+  agentDoneCalled: boolean;
+  hadTextOutput: boolean;
+  errorCount: number;
+}
+
+export interface SendMessageOptions {
+  /** If true, don't show this message in the UI as a user message. */
+  silent?: boolean;
+  /** If true, suppress text-delta dispatches to the UI (still tracked in TurnResult). */
+  suppressText?: boolean;
+}
 
 // ── Session ────────────────────────────────────────────────────────────────
 

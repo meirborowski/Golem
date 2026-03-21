@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Text, Static, useApp } from 'ink';
+import { Box, Text, Static, useApp, useInput } from 'ink';
 import { useAppContext } from '../context/app-context.js';
-import { useConversation } from '../hooks/use-conversation.js';
+import { useAgent } from '../hooks/use-agent.js';
 import { saveSession, loadSession, listSessions, exportToMarkdown } from '../../core/session.js';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -12,6 +12,7 @@ import { InputBar } from './input-bar.js';
 import { Spinner } from './spinner.js';
 import { StatusBar } from './status-bar.js';
 import { ApprovalPrompt } from './approval-prompt.js';
+import { AgentProgress } from './agent-progress.js';
 
 const HELP_TEXT = [
   'Available commands:',
@@ -29,11 +30,18 @@ const HELP_TEXT = [
 
 export function ChatView() {
   const { config, dispatch, state, activeModelName, activeProvider, switchModel } = useAppContext();
-  const { messages, isStreaming, error, tokenUsage, sendMessage, loadSession: loadIntoEngine } =
-    useConversation();
+  const { messages, isStreaming, error, tokenUsage, sendMessage, cancelAgent, loadSession: loadIntoEngine } =
+    useAgent();
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { exit } = useApp();
+
+  // Allow Escape to cancel agent mode
+  useInput((_input, key) => {
+    if (key.escape && state.agentMode?.status === 'running') {
+      cancelAgent();
+    }
+  }, { isActive: state.agentMode?.status === 'running' });
 
   const handleSubmit = (input: string) => {
     if (showWelcome) setShowWelcome(false);
@@ -315,6 +323,10 @@ export function ChatView() {
         )}
 
         {activeMessage && <Message message={activeMessage} isStreamingThis />}
+
+        {state.agentMode?.status === 'running' && (
+          <AgentProgress agentMode={state.agentMode} />
+        )}
 
         {isStreaming && !state.pendingApproval && <Spinner />}
 

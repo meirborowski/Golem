@@ -7,6 +7,7 @@ const initialState: AppState = {
   error: null,
   pendingApproval: null,
   tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+  agentMode: null,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -98,6 +99,33 @@ function appReducer(state: AppState, action: AppAction): AppState {
         messages: action.messages,
         tokenUsage: action.tokenUsage,
         error: null,
+      };
+
+    case 'START_AGENT_MODE':
+      return {
+        ...state,
+        agentMode: {
+          task: action.task,
+          currentTurn: 0,
+          maxTurns: action.maxTurns,
+          status: 'running',
+        },
+      };
+
+    case 'AGENT_TURN_COMPLETE':
+      return {
+        ...state,
+        agentMode: state.agentMode
+          ? { ...state.agentMode, currentTurn: state.agentMode.currentTurn + 1 }
+          : null,
+      };
+
+    case 'STOP_AGENT_MODE':
+      return {
+        ...state,
+        agentMode: state.agentMode
+          ? { ...state.agentMode, status: action.status }
+          : null,
       };
 
     default:

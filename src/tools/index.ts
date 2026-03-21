@@ -16,3 +16,4 @@ export { rename } from './rename.js';
 export { directoryTree } from './directory-tree.js';
 export { webSearch } from './web-search.js';
 export { diffFiles } from './diff-files.js';
+export { agentDone } from './agent-done.js';

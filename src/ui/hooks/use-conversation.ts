@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools } from '../../core/tool-registry.js';
-import type { ApprovalCallback, ChatMessage, TokenUsage } from '../../core/types.js';
+import type { ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessageOptions } from '../../core/types.js';
 import type { ModelMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
@@ -65,10 +65,14 @@ export function useConversation() {
   );
 
   const sendMessage = useCallback(
-    async (input: string) => {
-      if (!engineRef.current || state.isStreaming) return;
+    async (input: string, options?: SendMessageOptions): Promise<TurnResult> => {
+      const turnResult: TurnResult = { hadToolCalls: false, agentDoneCalled: false, hadTextOutput: false, errorCount: 0 };
 
-      dispatch({ type: 'ADD_USER_MESSAGE', content: input });
+      if (!engineRef.current || state.isStreaming) return turnResult;
+
+      if (!options?.silent) {
+        dispatch({ type: 'ADD_USER_MESSAGE', content: input });
+      }
       dispatch({ type: 'START_STREAMING' });
       dispatch({ type: 'ADD_ASSISTANT_MESSAGE' });
 
@@ -76,12 +80,19 @@ export function useConversation() {
         for await (const event of engineRef.current.sendMessage(input)) {
           switch (event.type) {
             case 'text-delta':
-              appendText(event.text);
+              turnResult.hadTextOutput = true;
+              if (!options?.suppressText) {
+                appendText(event.text);
+              }
               break;
 
             case 'tool-call':
               // Flush any pending text before showing tool call
               flushTextBuffer();
+              turnResult.hadToolCalls = true;
+              if (event.toolName === 'agentDone') {
+                turnResult.agentDoneCalled = true;
+              }
               dispatch({
                 type: 'ADD_TOOL_CALL',
                 toolCall: {
@@ -109,17 +120,21 @@ export function useConversation() {
 
             case 'error':
               flushTextBuffer();
+              turnResult.errorCount++;
               dispatch({ type: 'SET_ERROR', error: event.error.message });
               break;
           }
         }
       } catch (error) {
         flushTextBuffer();
+        turnResult.errorCount++;
         dispatch({
           type: 'SET_ERROR',
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
+
+      return turnResult;
     },
     [state.isStreaming, dispatch, appendText, flushTextBuffer],
   );

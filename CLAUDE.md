@@ -27,7 +27,11 @@ src/utils/     — Shared helpers (file I/O, logging, project detection).
 
 ### State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
+Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`, `START_AGENT_MODE`, `AGENT_TURN_COMPLETE`, `STOP_AGENT_MODE`.
+
+### Agent Mode
+
+Golem operates in agent mode by default. After each user message, the AI autonomously plans, executes tools, and continues across multiple turns until the task is complete. The `useAgent` hook (`src/ui/hooks/use-agent.ts`) wraps `useConversation` with an auto-continuation loop. Stop conditions: `agentDone` tool called, no tool calls in response (simple Q&A), max 20 turns, Escape key, or 3 consecutive errors.
 
 ### Rendering Performance
 
@@ -106,6 +110,7 @@ providers.set('myProvider', {
 | `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
 | `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
 | `webSearch` | `src/tools/web-search.ts` | Web search via SearXNG |
+| `agentDone` | `src/tools/agent-done.ts` | Signal task completion with summary |
 
 ## Slash Commands
 
