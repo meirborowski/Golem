@@ -12,15 +12,19 @@ export const fetchUrl = () =>
       url: z.string().describe('The URL to fetch'),
       method: z
         .union([z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']), z.null()])
+        .default(null)
         .describe('HTTP method. Null defaults to GET.'),
       headers: z
         .union([z.record(z.string()), z.null()])
+        .default(null)
         .describe('Request headers as key-value pairs. Null for no custom headers.'),
       body: z
         .union([z.string(), z.null()])
+        .default(null)
         .describe('Request body (for POST/PUT/PATCH). Null for no body.'),
       timeout: z
         .union([z.number(), z.null()])
+        .default(null)
         .describe('Timeout in milliseconds. Null defaults to 15000.'),
     }),
     execute: async ({ url, method: rawMethod, headers: rawHeaders, body, timeout: rawTimeout }) => {

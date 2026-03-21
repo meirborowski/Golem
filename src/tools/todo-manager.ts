@@ -42,12 +42,15 @@ export const todoManager = (cwd: string) =>
         .describe('The action to perform on the todo list'),
       task: z
         .union([z.string(), z.null()])
+        .default(null)
         .describe('Task description (required for "add")'),
       id: z
         .union([z.number(), z.null()])
+        .default(null)
         .describe('Task ID (required for "update" and "remove")'),
       status: z
         .union([z.enum(['pending', 'in-progress', 'done']), z.null()])
+        .default(null)
         .describe('New status (for "update"). Null keeps current status.'),
     }),
     execute: async ({ action, task, id, status }) => {

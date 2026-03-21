@@ -13,12 +13,15 @@ export const memory = (cwd: string) =>
         .describe('The action to perform'),
       key: z
         .union([z.string(), z.null()])
+        .default(null)
         .describe('Memory key (required for set, get, delete). Use descriptive names like "test-framework" or "preferred-style".'),
       value: z
         .union([z.string(), z.null()])
+        .default(null)
         .describe('Value to store (required for set).'),
       scope: z
         .union([z.enum(['global', 'project']), z.null()])
+        .default(null)
         .describe('Where to store. "project" (default) for project-specific, "global" for cross-project preferences.'),
     }),
     execute: async ({ action, key, value, scope: rawScope }) => {

@@ -8,8 +8,8 @@ export const readFile = (cwd: string) =>
       'Read the contents of a file. Returns numbered lines. Use startLine/endLine for large files.',
     parameters: z.object({
       filePath: z.string().describe('Absolute or relative path to the file'),
-      startLine: z.union([z.number(), z.null()]).describe('1-based start line (inclusive), or null to read from beginning'),
-      endLine: z.union([z.number(), z.null()]).describe('1-based end line (inclusive), or null to read to end'),
+      startLine: z.union([z.number(), z.null()]).default(null).describe('1-based start line (inclusive), or null to read from beginning'),
+      endLine: z.union([z.number(), z.null()]).default(null).describe('1-based end line (inclusive), or null to read to end'),
     }),
     execute: async ({ filePath, startLine, endLine }) => {
       try {

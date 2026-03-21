@@ -97,12 +97,15 @@ export const directoryTree = (cwd: string) =>
       path: z.string().describe('Relative directory path to tree, e.g. "src" or "."'),
       maxDepth: z
         .union([z.number(), z.null()])
+        .default(null)
         .describe('Maximum recursion depth. Null defaults to 12.'),
       includeFiles: z
         .union([z.boolean(), z.null()])
+        .default(null)
         .describe('Whether to include files or show only directories. Null defaults to true.'),
       maxEntries: z
         .union([z.number(), z.null()])
+        .default(null)
         .describe('Maximum total entries to display. Null defaults to 200.'),
     }),
     execute: async ({ path: relPath, maxDepth: rawDepth, includeFiles: rawFiles, maxEntries: rawMax }) => {

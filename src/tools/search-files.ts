@@ -17,9 +17,9 @@ export const searchFiles = (cwd: string) =>
       'Search file contents using a regex pattern. Returns matching lines with surrounding context. Respects .gitignore.',
     parameters: z.object({
       pattern: z.string().describe('Regex pattern to search for'),
-      glob: z.union([z.string(), z.null()]).describe('Glob pattern to filter which files to search. Null defaults to "**/*".'),
-      maxResults: z.union([z.number(), z.null()]).describe('Maximum number of matches to return. Null defaults to 50.'),
-      contextLines: z.union([z.number(), z.null()]).describe('Number of lines of context around each match. Null defaults to 2.'),
+      glob: z.union([z.string(), z.null()]).default(null).describe('Glob pattern to filter which files to search. Null defaults to "**/*".'),
+      maxResults: z.union([z.number(), z.null()]).default(null).describe('Maximum number of matches to return. Null defaults to 50.'),
+      contextLines: z.union([z.number(), z.null()]).default(null).describe('Number of lines of context around each match. Null defaults to 2.'),
     }),
     execute: async ({ pattern, glob: rawGlob, maxResults: rawMax, contextLines: rawCtx }) => {
       const glob = rawGlob ?? '**/*';

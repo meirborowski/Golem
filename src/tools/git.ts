@@ -57,6 +57,7 @@ export const git = (cwd: string) =>
         .describe('The git subcommand to run'),
       args: z
         .union([z.string(), z.null()])
+        .default(null)
         .describe(
           'Arguments for the subcommand (e.g. "--oneline -5" for log, "-m \\"message\\"" for commit). Null for no args.',
         ),

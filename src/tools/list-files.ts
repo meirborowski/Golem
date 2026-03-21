@@ -10,7 +10,7 @@ export const listFiles = (cwd: string) =>
       'List files matching a glob pattern. Respects .gitignore. Returns paths relative to the working directory.',
     parameters: z.object({
       pattern: z.string().describe('Glob pattern, e.g. "src/**/*.ts" or "**/*.json"'),
-      maxResults: z.union([z.number(), z.null()]).describe('Maximum number of files to return. Null defaults to 100.'),
+      maxResults: z.union([z.number(), z.null()]).default(null).describe('Maximum number of files to return. Null defaults to 100.'),
     }),
     execute: async ({ pattern, maxResults: rawMax }) => {
       const maxResults = rawMax ?? 100;
