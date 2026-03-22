@@ -7,8 +7,13 @@
     "golem": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "!dist/**/*.test.*",
     "README.md",
     "LICENSE"
   ],
