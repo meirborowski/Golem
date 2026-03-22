@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ModelMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
+import type { McpToolDescription } from './mcp-client.js';
 import { detectProject } from '../utils/detect-project.js';
 import { loadMemoryForPrompt } from './memory.js';
 import { logger } from '../utils/logger.js';
@@ -13,12 +14,22 @@ const MAX_DOC_CHARS = 8000; // Cap to avoid blowing the context window
 export class ConversationEngine {
   private messages: ModelMessage[] = [];
   private totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+  private mcpToolDescriptions: McpToolDescription[] = [];
 
   constructor(
     private model: LanguageModel,
-    private readonly tools: ToolSet,
+    private tools: ToolSet,
     private readonly config: ResolvedConfig,
   ) {}
+
+  setMcpToolDescriptions(descriptions: McpToolDescription[]): void {
+    this.mcpToolDescriptions = descriptions;
+  }
+
+  /** Merge additional tools into the engine's tool set (e.g. MCP tools loaded after init). */
+  mergeTools(extraTools: ToolSet): void {
+    this.tools = { ...this.tools, ...extraTools };
+  }
 
   async *sendMessage(userMessage: string): AsyncGenerator<StreamEvent> {
     this.messages.push({ role: 'user', content: userMessage });
@@ -281,6 +292,24 @@ export class ConversationEngine {
     parts.push('- webSearch: Search the web via SearXNG');
     parts.push('- diffFiles: Compare files, git HEAD versions, or raw strings');
     parts.push('- agentDone: Signal that you have completed the task');
+
+    // Add MCP tool descriptions grouped by server
+    if (this.mcpToolDescriptions.length > 0) {
+      parts.push('');
+      parts.push('## MCP Server Tools');
+      const byServer = new Map<string, McpToolDescription[]>();
+      for (const desc of this.mcpToolDescriptions) {
+        const list = byServer.get(desc.server) ?? [];
+        list.push(desc);
+        byServer.set(desc.server, list);
+      }
+      for (const [server, tools] of byServer) {
+        parts.push(`From "${server}":`);
+        for (const t of tools) {
+          parts.push(`- ${t.name}: ${t.description}`);
+        }
+      }
+    }
 
     parts.push('');
     parts.push('## Agent Behavior');

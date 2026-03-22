@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import type { AppState, AppAction, ResolvedConfig, LanguageModel, TokenUsage } from '../../core/types.js';
+import type { AppState, AppAction, ResolvedConfig, LanguageModel } from '../../core/types.js';
+import type { McpManager } from '../../core/mcp-client.js';
 
 const initialState: AppState = {
   messages: [],
@@ -188,6 +189,7 @@ interface AppContextValue {
   activeModelName: string;
   activeProvider: string;
   switchModel: (provider: string, model?: string) => void;
+  mcpManager: McpManager | null;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -199,6 +201,7 @@ export function AppContextProvider({
   activeModelName,
   activeProvider,
   switchModel,
+  mcpManager,
 }: {
   children: React.ReactNode;
   config: ResolvedConfig;
@@ -206,12 +209,13 @@ export function AppContextProvider({
   activeModelName: string;
   activeProvider: string;
   switchModel: (provider: string, model?: string) => void;
+  mcpManager: McpManager | null;
 }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   return (
     <AppContext.Provider
-      value={{ state, dispatch, config, activeModel, activeModelName, activeProvider, switchModel }}
+      value={{ state, dispatch, config, activeModel, activeModelName, activeProvider, switchModel, mcpManager }}
     >
       {children}
     </AppContext.Provider>

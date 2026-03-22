@@ -8,6 +8,19 @@ export interface ProviderConfig {
   model?: string;
 }
 
+export interface McpServerStdio {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+export interface McpServerHttp {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export type McpServerConfig = McpServerStdio | McpServerHttp;
+
 export interface GolemConfig {
   provider: string;
   model?: string;
@@ -17,6 +30,7 @@ export interface GolemConfig {
   temperature?: number;
   debug?: boolean;
   providers?: Record<string, ProviderConfig>;
+  mcpServers?: Record<string, McpServerConfig>;
 }
 
 export interface ResolvedConfig {
@@ -29,6 +43,7 @@ export interface ResolvedConfig {
   debug: boolean;
   cwd: string;
   providers: Record<string, ProviderConfig>;
+  mcpServers: Record<string, McpServerConfig>;
 }
 
 // ── Provider ────────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ function summarizeToolResult(result: unknown): unknown {
 }
 
 export function useConversation() {
-  const { state, dispatch, config, activeModel } = useAppContext();
+  const { state, dispatch, config, activeModel, mcpManager } = useAppContext();
 
   // Keep a stable ref to dispatch so the approval callback never goes stale
   const dispatchRef = useRef(dispatch);
@@ -42,8 +42,13 @@ export function useConversation() {
 
   // Lazily create the engine with approval-wrapped tools
   if (!engineRef.current) {
-    const tools = createBuiltinTools(config, approvalCallback);
-    engineRef.current = new ConversationEngine(activeModel, tools, config);
+    const builtinTools = createBuiltinTools(config, approvalCallback);
+    const mcpTools = mcpManager?.tools ?? {};
+    const allTools = { ...builtinTools, ...mcpTools };
+    engineRef.current = new ConversationEngine(activeModel, allTools, config);
+    if (mcpManager) {
+      engineRef.current.setMcpToolDescriptions(mcpManager.toolDescriptions);
+    }
   }
 
   // When the active model changes, update the engine
@@ -52,6 +57,14 @@ export function useConversation() {
       engineRef.current.setModel(activeModel);
     }
   }, [activeModel]);
+
+  // When MCP tools become available after engine creation, merge them in
+  useEffect(() => {
+    if (engineRef.current && mcpManager) {
+      engineRef.current.mergeTools(mcpManager.tools);
+      engineRef.current.setMcpToolDescriptions(mcpManager.toolDescriptions);
+    }
+  }, [mcpManager]);
 
   // Text buffer for batching APPEND_CHUNK dispatches
   const textBufferRef = useRef('');

@@ -31,7 +31,9 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.63",
     "@ai-sdk/google": "^3.0.52",
+    "@ai-sdk/mcp": "^1.0.30",
     "@ai-sdk/openai": "^3.0.47",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "ai": "^6.0.134",
     "chalk": "^5.3.0",
     "cli-highlight": "^2.1.0",

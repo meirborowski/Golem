@@ -60,7 +60,7 @@ const CONDITIONAL_APPROVAL: Record<string, (args: unknown) => boolean> = {
   },
 };
 
-function wrapWithApproval(
+export function wrapWithApproval(
   originalTool: ToolSet[string],
   toolName: string,
   onApprovalNeeded: ApprovalCallback,

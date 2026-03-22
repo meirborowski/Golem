@@ -12,6 +12,7 @@ const DEFAULTS: ResolvedConfig = {
   debug: false,
   cwd: process.cwd(),
   providers: {},
+  mcpServers: {},
 };
 
 const CONFIG_FILENAME = 'config.json';
@@ -119,6 +120,10 @@ function mergeConfig(base: ResolvedConfig, override: Partial<GolemConfig>): Reso
     providers: {
       ...base.providers,
       ...(override.providers ?? {}),
+    },
+    mcpServers: {
+      ...base.mcpServers,
+      ...(override.mcpServers ?? {}),
     },
   };
 }

@@ -8,6 +8,7 @@ import { resolveConfig } from './core/config.js';
 import { listProviders } from './core/provider-registry.js';
 import { initLogger, logger } from './utils/logger.js';
 import { ensureSearxng, cleanupSearxng } from './utils/searxng.js';
+import { cleanupMcp } from './core/mcp-lifecycle.js';
 
 const cli = meow(
   `
@@ -87,15 +88,15 @@ const searxngBaseUrl =
   config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
 await ensureSearxng(searxngBaseUrl);
 
-// Clean up SearXNG container on exit
+// Clean up SearXNG container and MCP clients on exit
 process.on('exit', cleanupSearxng);
 process.on('SIGINT', () => {
   cleanupSearxng();
-  process.exit(0);
+  cleanupMcp().finally(() => process.exit(0));
 });
 process.on('SIGTERM', () => {
   cleanupSearxng();
-  process.exit(0);
+  cleanupMcp().finally(() => process.exit(0));
 });
 
 // Render the Ink app

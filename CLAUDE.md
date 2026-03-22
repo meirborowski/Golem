@@ -123,6 +123,48 @@ providers.set('myProvider', {
 | `diffFiles` | `src/tools/diff-files.ts` | Compare files, git HEAD versions, or raw strings |
 | `agentDone` | `src/tools/agent-done.ts` | Signal task completion with summary |
 
+## MCP Server Support
+
+Golem supports connecting to external [MCP (Model Context Protocol)](https://modelcontextprotocol.io) servers, giving the AI access to additional tools beyond the built-in set.
+
+### Configuration
+
+Add an `mcpServers` key to your global or project config:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "ghp_..." }
+    },
+    "custom-api": {
+      "url": "https://mcp.example.com/sse",
+      "headers": { "Authorization": "Bearer ..." }
+    }
+  }
+}
+```
+
+- **Stdio transport**: Set `command` (and optional `args`, `env`) to spawn a local MCP server process.
+- **SSE/HTTP transport**: Set `url` (and optional `headers`) to connect to a remote MCP server.
+
+### Behavior
+
+- Tools are namespaced as `{serverName}_{toolName}` to avoid collisions with built-in tools.
+- **All MCP tool calls require user approval** since they execute external code.
+- Servers connect in the background at startup — the UI is not blocked.
+- If a server fails to connect, Golem logs a warning and continues without it.
+- MCP clients are cleaned up on exit (SIGINT/SIGTERM).
+
+### Architecture
+
+| File | Purpose |
+|------|---------|
+| `src/core/mcp-client.ts` | MCP client manager: connect, discover tools, namespace, wrap with approval |
+| `src/core/mcp-lifecycle.ts` | Module-level ref for process exit cleanup |
+
 ## Slash Commands
 
 | Command | Description |
@@ -143,7 +185,7 @@ npm install          # Install dependencies
 npm run dev          # Run in dev mode (tsx)
 npm run build        # Compile TypeScript -> dist/
 npm run start        # Run compiled version
-npm test             # Run vitest (71 tests)
+npm test             # Run vitest (167 tests)
 npm run typecheck    # Type-check without emitting
 npm run format       # Format with Prettier
 ```
@@ -182,7 +224,7 @@ golem --debug                      # Enable debug logging
 ## Testing
 
 - **Framework**: Vitest
-- **71 tests** across 7 test files
+- **167 tests** across 8 test files
 - **Tools**: Test by calling `execute()` directly — they're pure functions
 - **ConversationEngine**: Test truncation, history, system prompt building
 - **Session**: Test save/load/list with temp directories
@@ -197,6 +239,8 @@ golem --debug                      # Enable debug logging
 | `@ai-sdk/openai` | OpenAI provider |
 | `@ai-sdk/google` | Google Gemini provider |
 | `ollama-ai-provider` | Ollama local model provider |
+| `@ai-sdk/mcp` | MCP client adapter for Vercel AI SDK |
+| `@modelcontextprotocol/sdk` | MCP protocol SDK (transports) |
 | `zod` | Schema validation for tool inputs |
 | `ink` | React-based terminal UI |
 | `ink-spinner` | Loading spinner |

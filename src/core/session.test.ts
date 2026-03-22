@@ -35,6 +35,7 @@ const testConfig: ResolvedConfig = {
   debug: false,
   cwd: '/tmp/test',
   providers: {},
+  mcpServers: {},
 };
 
 describe('saveSession', () => {

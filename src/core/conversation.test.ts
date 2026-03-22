@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -36,6 +36,7 @@ const config: ResolvedConfig = {
   debug: false,
   cwd: tmpdir(),
   providers: {},
+  mcpServers: {},
 };
 
 describe('ConversationEngine', () => {
