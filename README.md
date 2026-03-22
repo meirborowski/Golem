@@ -23,6 +23,16 @@ If you’re using Golem inside this repo, read [GOLEM.md](GOLEM.md) for the proj
 
 ## Installation
 
+### Install from npm
+
+```bash
+npm install -g golem-cli
+```
+
+This installs the `golem` command globally.
+
+### Develop from source
+
 ```bash
 git clone <repository-url>
 cd golem-cli
@@ -104,6 +114,7 @@ Example config:
 | `npm run dev` | Run in development mode (tsx) |
 | `npm run build` | Compile TypeScript to dist/ |
 | `npm start` | Run compiled version |
+| `npm install -g golem-cli` | Install the CLI globally from npm |
 | `npm test` | Run tests via Vitest |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run format` | Format with Prettier |
