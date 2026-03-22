@@ -66,13 +66,15 @@ jobs:
       - name: Build package
         run: npm run build
 
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version --no-git-tag-version "${GITHUB_REF#refs/tags/v}"
+
+      - name: Set version from input
+        if: github.event.inputs.version
+        run: npm version --no-git-tag-version "${{ github.event.inputs.version }}"
+
       - name: Publish to npm
         run: |
           TAG="${{ github.event.inputs.tag || 'latest' }}"
-          VERSION="${{ github.event.inputs.version }}"
-
-          if [ -n "$VERSION" ]; then
-            npm version --no-git-tag-version "$VERSION"
-          fi
-
           npm publish --provenance --access public --tag "$TAG"
