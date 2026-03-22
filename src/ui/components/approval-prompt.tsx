@@ -18,17 +18,17 @@ function formatApprovalCommand(toolName: string, args: unknown): string {
   return `${toolName}(${pairs})`;
 }
 
-function getApprovalTitle(toolName: string): string {
-  if (toolName === 'bash') {
-    return 'Run shell command?';
-  }
-  if (toolName === 'git') {
-    return 'Run git operation?';
-  }
+function getApprovalTitle(toolName: string, mcpServer?: string): string {
+  if (mcpServer) return 'Approve external tool call?';
+  if (toolName === 'bash') return 'Run shell command?';
+  if (toolName === 'git') return 'Run git operation?';
   return 'Approve tool call?';
 }
 
-function getApprovalWarning(toolName: string): string {
+function getApprovalWarning(toolName: string, mcpServer?: string): string {
+  if (mcpServer) {
+    return `This tool executes on the "${mcpServer}" MCP server.`;
+  }
   if (toolName === 'bash') {
     return 'This command will run in your working directory and may modify files or execute arbitrary code.';
   }
@@ -54,8 +54,8 @@ export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
   });
 
   const command = formatApprovalCommand(approval.toolName, approval.args);
-  const title = getApprovalTitle(approval.toolName);
-  const warning = getApprovalWarning(approval.toolName);
+  const title = getApprovalTitle(approval.toolName, approval.mcpServer);
+  const warning = getApprovalWarning(approval.toolName, approval.mcpServer);
 
   return (
     <Box flexDirection="column" marginY={1} marginLeft={2}>
@@ -67,10 +67,13 @@ export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
           <Text color="yellow">Tool: </Text>
           <Text>{approval.toolName}</Text>
         </Box>
-        <Box>
-          <Text color="yellow">Call: </Text>
-          <Text>{approval.toolCallId}</Text>
-        </Box>
+        {approval.mcpServer && (
+          <Box>
+            <Text color="yellow">Server: </Text>
+            <Text>{approval.mcpServer}</Text>
+            <Text dimColor> (external MCP)</Text>
+          </Box>
+        )}
         <Box marginTop={1}>
           <Text dimColor>{warning}</Text>
         </Box>

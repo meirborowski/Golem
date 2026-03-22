@@ -27,11 +27,15 @@ function MessageInner({ message, isStreamingThis = false }: MessageProps) {
       </Text>
     );
 
+  const divider = role === 'system'
+    ? <Text dimColor> ---</Text>
+    : <Text dimColor> ─────</Text>;
+
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Box>
         {roleLabel}
-        <Text dimColor> ─────</Text>
+        {divider}
       </Box>
       {toolCalls?.map((tc) => (
         <Box key={tc.id} marginLeft={2} marginTop={0}>

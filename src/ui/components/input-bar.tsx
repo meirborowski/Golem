@@ -4,9 +4,10 @@ import { Box, Text, useInput } from 'ink';
 interface InputBarProps {
   onSubmit: (input: string) => void;
   isDisabled: boolean;
+  isAgentMode?: boolean;
 }
 
-export function InputBar({ onSubmit, isDisabled }: InputBarProps) {
+export function InputBar({ onSubmit, isDisabled, isAgentMode }: InputBarProps) {
   const [lines, setLines] = useState<string[]>(['']);
   const [cursorRow, setCursorRow] = useState(0);
   const [cursorCol, setCursorCol] = useState(0);
@@ -191,11 +192,13 @@ export function InputBar({ onSubmit, isDisabled }: InputBarProps) {
           </Box>
         ))}
         {isDisabled && (
-          <Text dimColor>Waiting for response...</Text>
+          <Text dimColor>
+            {isAgentMode ? 'Agent is working... (Escape to stop)' : 'Waiting for response...'}
+          </Text>
         )}
         {!isDisabled && lines.length === 1 && lines[0] === '' && (
           <Text dimColor>
-            Type your message...{modeHint}
+            Ask a question or describe a task...{modeHint}
           </Text>
         )}
       </Box>

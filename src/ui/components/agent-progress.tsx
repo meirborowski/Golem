@@ -22,6 +22,11 @@ export function AgentProgress({ agentMode }: { agentMode: AgentModeState }) {
         <Text color="magenta">
           {' '}— turn {agentMode.currentTurn}/{agentMode.maxTurns}
         </Text>
+        {agentMode.totalToolsExecuted > 0 && (
+          <Text dimColor>
+            {' '}| {agentMode.totalToolsExecuted} tool{agentMode.totalToolsExecuted !== 1 ? 's' : ''} run
+          </Text>
+        )}
         <Text dimColor> | {taskPreview}</Text>
         <Text dimColor> | Escape to stop</Text>
       </Box>

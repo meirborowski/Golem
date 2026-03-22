@@ -101,6 +101,7 @@ export interface AgentModeState {
   maxTurns: number;
   status: 'running' | 'completed' | 'cancelled' | 'error';
   toolActivity: AgentToolActivity[];
+  totalToolsExecuted: number;
 }
 
 // ── App State ───────────────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ export interface PendingApproval {
   toolName: string;
   args: unknown;
   resolve: (approved: boolean) => void;
+  mcpServer?: string;
 }
 
 export type ApprovalCallback = (

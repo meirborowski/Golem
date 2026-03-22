@@ -82,6 +82,9 @@ export function useAgent() {
         allToolCalls.push(...turnResult.toolCalls);
       }
 
+      // Clear any stale approval state from interrupted turns
+      dispatch({ type: 'SET_PENDING_APPROVAL', approval: null });
+
       // Emit the single final assistant message
       if (cancelledRef.current) {
         const cancelText = lastText || 'Agent cancelled.';

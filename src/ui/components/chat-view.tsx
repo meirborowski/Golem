@@ -28,23 +28,43 @@ const HELP_TEXT = [
   '  /exit, /quit       Exit Golem',
 ].join('\n');
 
+function getErrorHint(error: string): string | null {
+  const lower = error.toLowerCase();
+  if (lower.includes('api key') || lower.includes('authentication') || lower.includes('401')) {
+    return 'Check your API key in config or environment variables.';
+  }
+  if (lower.includes('rate limit') || lower.includes('429')) {
+    return 'Rate limited. Wait a moment and try again.';
+  }
+  if (lower.includes('network') || lower.includes('econnrefused') || lower.includes('fetch failed')) {
+    return 'Network error. Check your internet connection.';
+  }
+  if (lower.includes('context') || lower.includes('too long') || lower.includes('token')) {
+    return 'Context limit exceeded. Try /clear to start fresh.';
+  }
+  return null;
+}
+
 export function ChatView() {
-  const { config, dispatch, state, activeModelName, activeProvider, switchModel } = useAppContext();
+  const { config, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager } = useAppContext();
   const { messages, isStreaming, error, tokenUsage, sendMessage, cancelAgent, loadSession: loadIntoEngine } =
     useAgent();
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { exit } = useApp();
 
+  const isAgentRunning = state.agentMode?.status === 'running';
+
   // Allow Escape to cancel agent mode
   useInput((_input, key) => {
-    if (key.escape && state.agentMode?.status === 'running') {
+    if (key.escape && isAgentRunning) {
       cancelAgent();
     }
-  }, { isActive: state.agentMode?.status === 'running' });
+  }, { isActive: isAgentRunning });
 
   const handleSubmit = (input: string) => {
     if (showWelcome) setShowWelcome(false);
+    if (state.error) dispatch({ type: 'CLEAR_ERROR' });
 
     // Slash command handling
     if (input.startsWith('/')) {
@@ -298,6 +318,20 @@ export function ChatView() {
 
   const activeMessage = isLastStreaming ? lastMsg : null;
 
+  // Determine spinner label based on current state
+  const spinnerLabel = (() => {
+    const last = messages[messages.length - 1];
+    if (last?.toolCalls?.some((tc) => tc.status === 'running')) {
+      return 'Running tools...';
+    }
+    return 'Thinking...';
+  })();
+
+  // Count unique MCP servers
+  const mcpServerCount = mcpManager
+    ? new Set(mcpManager.toolDescriptions.map((td) => td.server)).size
+    : 0;
+
   return (
     <>
       {/* Static: rendered once, never redrawn — eliminates flicker on old messages */}
@@ -307,7 +341,13 @@ export function ChatView() {
           if (i === 0 && showWelcome) {
             return (
               <Box key={`welcome-${msg._key}`} flexDirection="column">
-                <Welcome provider={activeProvider} model={activeModelName} cwd={config.cwd} />
+                <Welcome
+                  provider={activeProvider}
+                  model={activeModelName}
+                  cwd={config.cwd}
+                  debug={config.debug}
+                  mcpServerCount={mcpServerCount}
+                />
                 <Message message={msg} />
               </Box>
             );
@@ -319,30 +359,48 @@ export function ChatView() {
       {/* Dynamic: only this part redraws during streaming */}
       <Box flexDirection="column">
         {completedMessages.length === 0 && showWelcome && (
-          <Welcome provider={activeProvider} model={activeModelName} cwd={config.cwd} />
+          <Welcome
+            provider={activeProvider}
+            model={activeModelName}
+            cwd={config.cwd}
+            debug={config.debug}
+            mcpServerCount={mcpServerCount}
+          />
         )}
 
         {activeMessage && <Message message={activeMessage} isStreamingThis />}
 
-        {state.agentMode?.status === 'running' && (
-          <AgentProgress agentMode={state.agentMode} />
+        {isAgentRunning && (
+          <AgentProgress agentMode={state.agentMode!} />
         )}
 
-        {isStreaming && !state.pendingApproval && !state.agentMode && <Spinner />}
+        {isStreaming && !state.pendingApproval && !state.agentMode && <Spinner label={spinnerLabel} />}
 
         {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
 
         {error && (
-          <Box marginLeft={2} marginBottom={1}>
-            <Box borderStyle="round" borderColor="red" paddingX={1}>
+          <Box marginLeft={2} marginBottom={1} flexDirection="column">
+            <Box borderStyle="round" borderColor="red" paddingX={1} flexDirection="column">
               <Text color="red">Error: {error}</Text>
+              {getErrorHint(error) && (
+                <Text dimColor>{getErrorHint(error)}</Text>
+              )}
             </Box>
           </Box>
         )}
 
-        <InputBar onSubmit={handleSubmit} isDisabled={isStreaming || state.agentMode?.status === 'running'} />
+        <InputBar
+          onSubmit={handleSubmit}
+          isDisabled={isStreaming || isAgentRunning}
+          isAgentMode={isAgentRunning}
+        />
 
-        <StatusBar provider={activeProvider} model={activeModelName} tokenUsage={tokenUsage} />
+        <StatusBar
+          provider={activeProvider}
+          model={activeModelName}
+          tokenUsage={tokenUsage}
+          contextWindow={config.contextWindow}
+        />
       </Box>
     </>
   );

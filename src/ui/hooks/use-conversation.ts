@@ -19,6 +19,12 @@ function summarizeToolResult(result: unknown): unknown {
     : { _summary: str.slice(0, MAX_RESULT_CHARS) + '… (truncated)' };
 }
 
+/** Check if a tool result indicates failure (tools return { success: false, error: ... }). */
+function isToolError(result: unknown): boolean {
+  if (result == null || typeof result !== 'object') return false;
+  return (result as Record<string, unknown>)['success'] === false;
+}
+
 export function useConversation() {
   const { state, dispatch, config, activeModel, mcpManager } = useAppContext();
 
@@ -26,12 +32,21 @@ export function useConversation() {
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
 
+  // Keep a stable ref to mcpManager for the approval callback
+  const mcpManagerRef = useRef(mcpManager);
+  mcpManagerRef.current = mcpManager;
+
   const approvalCallback = useCallback<ApprovalCallback>(
     (toolName, toolCallId, args) => {
       return new Promise<boolean>((resolve) => {
+        // Detect MCP server from namespaced tool name
+        const mcpServer = mcpManagerRef.current?.toolDescriptions.find(
+          (td) => td.name === toolName,
+        )?.server;
+
         dispatchRef.current({
           type: 'SET_PENDING_APPROVAL',
-          approval: { toolCallId, toolName, args, resolve },
+          approval: { toolCallId, toolName, args, resolve, mcpServer },
         });
       });
     },
@@ -167,23 +182,25 @@ export function useConversation() {
             }
 
             case 'tool-result': {
+              const toolError = isToolError(event.result);
+              const toolStatus = toolError ? 'error' as const : 'completed' as const;
+
               if (isBackground) {
                 const tc = collectedToolCalls.find((t) => t.id === event.toolCallId);
                 if (tc) {
-                  // Store a truncated summary to avoid holding large file contents in memory
                   tc.result = summarizeToolResult(event.result);
-                  tc.status = 'completed';
+                  tc.status = toolStatus;
                 }
                 dispatch({
                   type: 'AGENT_TOOL_DONE',
                   toolName: event.toolName,
-                  status: 'completed',
+                  status: toolStatus,
                 });
               } else {
                 dispatch({
                   type: 'UPDATE_TOOL_CALL',
                   toolCallId: event.toolCallId,
-                  update: { result: event.result, status: 'completed' },
+                  update: { result: summarizeToolResult(event.result), status: toolStatus },
                 });
               }
               break;

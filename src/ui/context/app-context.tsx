@@ -100,6 +100,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         messages: action.messages,
         tokenUsage: action.tokenUsage,
         error: null,
+        pendingApproval: null,
+        agentMode: null,
       };
 
     case 'START_AGENT_MODE':
@@ -111,6 +113,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           maxTurns: action.maxTurns,
           status: 'running',
           toolActivity: [],
+          totalToolsExecuted: 0,
         },
       };
 
@@ -156,7 +159,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       return {
         ...state,
-        agentMode: { ...state.agentMode, toolActivity },
+        agentMode: {
+          ...state.agentMode,
+          toolActivity,
+          totalToolsExecuted: state.agentMode.totalToolsExecuted + 1,
+        },
       };
     }
 

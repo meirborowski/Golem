@@ -6,10 +6,19 @@ interface StatusBarProps {
   provider: string;
   model: string;
   tokenUsage: TokenUsage;
+  contextWindow?: number;
 }
 
-export function StatusBar({ provider, model, tokenUsage }: StatusBarProps) {
-  const tokens = tokenUsage.totalTokens > 0 ? `${tokenUsage.totalTokens} tokens` : '';
+export function StatusBar({ provider, model, tokenUsage, contextWindow }: StatusBarProps) {
+  const parts: string[] = [];
+  if (tokenUsage.totalTokens > 0) {
+    parts.push(`${tokenUsage.promptTokens}p / ${tokenUsage.completionTokens}c`);
+    if (contextWindow && contextWindow > 0) {
+      const pct = Math.round((tokenUsage.promptTokens / contextWindow) * 100);
+      parts.push(`${pct}% ctx`);
+    }
+  }
+  const tokenDisplay = parts.join(' | ');
 
   return (
     <Box justifyContent="space-between" paddingX={1}>
@@ -18,9 +27,9 @@ export function StatusBar({ provider, model, tokenUsage }: StatusBarProps) {
           {provider}/{model}
         </Text>
       </Box>
-      {tokens && (
+      {tokenDisplay && (
         <Box>
-          <Text dimColor>{tokens}</Text>
+          <Text dimColor>{tokenDisplay}</Text>
         </Box>
       )}
     </Box>
