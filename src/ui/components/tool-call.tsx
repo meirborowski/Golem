@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { ToolCallInfo } from '../../core/types.js';
 import { formatArgs } from '../../utils/format-args.js';
+import { formatDuration } from '../../utils/format-duration.js';
 
 const MAX_ARGS_LEN = 80;
 const MAX_PREVIEW_LEN = 120;
@@ -66,7 +67,7 @@ interface ToolCallDisplayProps {
 }
 
 export function ToolCallDisplay({ toolCall }: ToolCallDisplayProps) {
-  const { toolName, args, status, result } = toolCall;
+  const { toolName, args, status, result, durationMs } = toolCall;
 
   const statusIcon =
     status === 'completed' ? (
@@ -93,6 +94,9 @@ export function ToolCallDisplay({ toolCall }: ToolCallDisplayProps) {
         {statusIcon}
         <Text color="magenta"> {toolName}</Text>
         <Text dimColor>({argsPreview})</Text>
+        {durationMs != null && (
+          <Text dimColor> {formatDuration(durationMs)}</Text>
+        )}
       </Box>
       {resultPreview && (
         <Box marginLeft={4}>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
 import type { AgentModeState } from '../../core/types.js';
+import { formatDuration } from '../../utils/format-duration.js';
 
 const MAX_VISIBLE_TOOLS = 8;
 
@@ -50,8 +51,12 @@ export function AgentProgress({ agentMode }: { agentMode: AgentModeState }) {
           )}
           <Text color="cyan"> {tool.toolName}</Text>
           <Text dimColor>({tool.argsPreview})</Text>
-          {tool.status === 'completed' && <Text dimColor> Done</Text>}
-          {tool.status === 'error' && <Text color="red"> Failed</Text>}
+          {tool.status === 'completed' && (
+            <Text dimColor> Done{tool.durationMs != null ? ` ${formatDuration(tool.durationMs)}` : ''}</Text>
+          )}
+          {tool.status === 'error' && (
+            <Text color="red"> Failed{tool.durationMs != null ? ` ${formatDuration(tool.durationMs)}` : ''}</Text>
+          )}
         </Box>
       ))}
     </Box>

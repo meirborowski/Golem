@@ -133,6 +133,8 @@ export function useConversation() {
       // Local collectors for background mode
       let collectedText = '';
       const collectedToolCalls: ToolCallInfo[] = [];
+      // Track tool call start times for duration measurement
+      const toolStartTimes = new Map<string, number>();
 
       try {
         for await (const event of engineRef.current.sendMessage(input)) {
@@ -155,12 +157,16 @@ export function useConversation() {
                 turnResult.agentDoneCalled = true;
               }
 
+              const now = Date.now();
+              toolStartTimes.set(event.toolCallId, now);
+
               if (isBackground) {
                 collectedToolCalls.push({
                   id: event.toolCallId,
                   toolName: event.toolName,
                   args: event.args,
                   status: 'running' as const,
+                  startedAt: now,
                 });
                 dispatch({
                   type: 'AGENT_TOOL_START',
@@ -175,6 +181,7 @@ export function useConversation() {
                     toolName: event.toolName,
                     args: event.args,
                     status: 'running',
+                    startedAt: now,
                   },
                 });
               }
@@ -184,23 +191,28 @@ export function useConversation() {
             case 'tool-result': {
               const toolError = isToolError(event.result);
               const toolStatus = toolError ? 'error' as const : 'completed' as const;
+              const startTime = toolStartTimes.get(event.toolCallId);
+              const durationMs = startTime != null ? Date.now() - startTime : undefined;
+              toolStartTimes.delete(event.toolCallId);
 
               if (isBackground) {
                 const tc = collectedToolCalls.find((t) => t.id === event.toolCallId);
                 if (tc) {
                   tc.result = summarizeToolResult(event.result);
                   tc.status = toolStatus;
+                  tc.durationMs = durationMs;
                 }
                 dispatch({
                   type: 'AGENT_TOOL_DONE',
                   toolName: event.toolName,
                   status: toolStatus,
+                  durationMs,
                 });
               } else {
                 dispatch({
                   type: 'UPDATE_TOOL_CALL',
                   toolCallId: event.toolCallId,
-                  update: { result: summarizeToolResult(event.result), status: toolStatus },
+                  update: { result: summarizeToolResult(event.result), status: toolStatus, durationMs },
                 });
               }
               break;

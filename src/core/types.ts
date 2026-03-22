@@ -85,6 +85,8 @@ export interface ToolCallInfo {
   args: unknown;
   result?: unknown;
   status: 'pending' | 'running' | 'completed' | 'error';
+  startedAt?: number;
+  durationMs?: number;
 }
 
 // ── Agent Mode ──────────────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ export interface AgentToolActivity {
   toolName: string;
   argsPreview: string;
   status: 'running' | 'completed' | 'error';
+  durationMs?: number;
 }
 
 export interface AgentModeState {
@@ -147,7 +150,7 @@ export type AppAction =
   | { type: 'AGENT_TURN_COMPLETE'; turn: number }
   | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error' }
   | { type: 'AGENT_TOOL_START'; toolName: string; argsPreview: string }
-  | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error' }
+  | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error'; durationMs?: number }
   | { type: 'SET_AGENT_FINAL_MESSAGE'; content: string; toolCalls?: ToolCallInfo[] };
 
 // ── Turn Result ─────────────────────────────────────────────────────────────

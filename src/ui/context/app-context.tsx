@@ -153,7 +153,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       // Update the last matching running tool
       for (let i = toolActivity.length - 1; i >= 0; i--) {
         if (toolActivity[i].toolName === action.toolName && toolActivity[i].status === 'running') {
-          toolActivity[i] = { ...toolActivity[i], status: action.status };
+          toolActivity[i] = { ...toolActivity[i], status: action.status, durationMs: action.durationMs };
           break;
         }
       }
