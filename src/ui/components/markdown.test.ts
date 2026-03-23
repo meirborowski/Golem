@@ -136,6 +136,15 @@ describe('markdown parsing', () => {
       expect(blocks[2].type).toBe('prose');
     });
 
+    it('preserves long code lines for terminal wrapping', () => {
+      const longLine = 'const message = "' + 'x'.repeat(200) + '";';
+      const blocks = parseBlocks(['```ts', longLine, '```'].join('\n'));
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].type).toBe('code');
+      expect(blocks[0].code).toContain('x'.repeat(200));
+      expect(blocks[0].code).toBe(longLine);
+    });
+
     it('handles nested code fences', () => {
       const input = [
         '```markdown',

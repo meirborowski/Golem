@@ -140,7 +140,7 @@ function CodeBlockView({ language, code }: { language: string; code: string }) {
           {language}
         </Text>
       ) : null}
-      <Text>{highlighted}</Text>
+      <Text wrap="wrap">{highlighted}</Text>
     </Box>
   );
 }
