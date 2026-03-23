@@ -2,28 +2,12 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
 import { createBuiltinTools, getToolMeta } from '../../core/tool-registry.js';
+import { summarizeToolResult, isToolError } from '../../core/stream-utils.js';
 import { formatArgs } from '../../utils/format-args.js';
 import type { AgentTodoItem, ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessageOptions, ToolCallInfo } from '../../core/types.js';
 import type { ModelMessage } from 'ai';
 
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
-const MAX_RESULT_CHARS = 200; // Truncate tool results stored in memory
-
-/** Shrink a tool result to avoid holding large file contents in memory. */
-function summarizeToolResult(result: unknown): unknown {
-  if (result == null) return result;
-  const str = typeof result === 'string' ? result : JSON.stringify(result);
-  if (str.length <= MAX_RESULT_CHARS) return result;
-  return typeof result === 'string'
-    ? str.slice(0, MAX_RESULT_CHARS) + '… (truncated)'
-    : { _summary: str.slice(0, MAX_RESULT_CHARS) + '… (truncated)' };
-}
-
-/** Check if a tool result indicates failure (tools return { success: false, error: ... }). */
-function isToolError(result: unknown): boolean {
-  if (result == null || typeof result !== 'object') return false;
-  return (result as Record<string, unknown>)['success'] === false;
-}
 
 export function useConversation() {
   const { state, dispatch, config, activeModel, mcpManager, agent } = useAppContext();
