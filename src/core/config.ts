@@ -71,6 +71,7 @@ export interface CliArgs {
   provider?: string;
   model?: string;
   apiKey?: string;
+  agent?: string;
   debug?: boolean;
 }
 
@@ -99,6 +100,7 @@ export function resolveConfig(cliArgs: CliArgs = {}): ResolvedConfig {
   if (cliArgs.provider) config.provider = cliArgs.provider;
   if (cliArgs.model) config.model = cliArgs.model;
   if (cliArgs.apiKey) config.apiKey = cliArgs.apiKey;
+  if (cliArgs.agent) config.agent = cliArgs.agent;
   if (cliArgs.debug !== undefined) config.debug = cliArgs.debug;
 
   // Resolve cwd

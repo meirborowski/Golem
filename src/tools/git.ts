@@ -31,57 +31,60 @@ export function isGitReadOnly(subcommand: string, args: string | null): boolean 
 }
 
 export const git = (cwd: string) =>
-  tool({
-    description:
-      'Execute git operations in the project repository. Supports status, diff, log, show, add, commit, checkout, branch, merge, rebase, push, pull, stash, reset, tag, and remote. Read-only operations (status, diff, log, show, branch list, etc.) run without approval; write operations require user confirmation.',
-    inputSchema: z.object({
-      subcommand: z
-        .enum([
-          'status',
-          'diff',
-          'log',
-          'show',
-          'add',
-          'commit',
-          'checkout',
-          'branch',
-          'merge',
-          'rebase',
-          'push',
-          'pull',
-          'stash',
-          'reset',
-          'tag',
-          'remote',
-        ])
-        .describe('The git subcommand to run'),
-      args: z
-        .union([z.string(), z.null()])
-        .describe(
-          'Arguments for the subcommand (e.g. "--oneline -5" for log, "-m \\"message\\"" for commit). Null for no args.',
-        ),
-    }),
-    execute: async ({ subcommand, args: rawArgs }) => {
-      const args = rawArgs ?? '';
-      const command = `git ${subcommand} ${args}`.trim();
+  Object.assign(
+    tool({
+      description:
+        'Execute git operations in the project repository. Supports status, diff, log, show, add, commit, checkout, branch, merge, rebase, push, pull, stash, reset, tag, and remote. Read-only operations (status, diff, log, show, branch list, etc.) run without approval; write operations require user confirmation.',
+      inputSchema: z.object({
+        subcommand: z
+          .enum([
+            'status',
+            'diff',
+            'log',
+            'show',
+            'add',
+            'commit',
+            'checkout',
+            'branch',
+            'merge',
+            'rebase',
+            'push',
+            'pull',
+            'stash',
+            'reset',
+            'tag',
+            'remote',
+          ])
+          .describe('The git subcommand to run'),
+        args: z
+          .union([z.string(), z.null()])
+          .describe(
+            'Arguments for the subcommand (e.g. "--oneline -5" for log, "-m \\"message\\"" for commit). Null for no args.',
+          ),
+      }),
+      execute: async ({ subcommand, args: rawArgs }) => {
+        const args = rawArgs ?? '';
+        const command = `git ${subcommand} ${args}`.trim();
 
-      const result = await execAsync(command, { cwd, timeout: DEFAULT_TIMEOUT });
+        const result = await execAsync(command, { cwd, timeout: DEFAULT_TIMEOUT });
 
-      if (result.exitCode === 0) {
+        if (result.exitCode === 0) {
+          return {
+            success: true,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            exitCode: 0,
+          };
+        }
+
         return {
-          success: true,
+          success: false,
           stdout: result.stdout,
           stderr: result.stderr,
-          exitCode: 0,
+          exitCode: result.exitCode,
+          error: result.stderr || `Command failed with exit code ${result.exitCode}`,
         };
-      }
-
-      return {
-        success: false,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exitCode: result.exitCode,
-        error: result.stderr || `Command failed with exit code ${result.exitCode}`,
-      };
-    },
-  });
+      },
+    }),
+    { whenToUse: 'When performing version control operations — checking status, viewing diffs, making commits, managing branches, or inspecting history.' },
+  );

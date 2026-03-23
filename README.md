@@ -9,6 +9,7 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
 - **Built-in tools**: Read, write, edit files; glob and regex search; shell commands; git; memory; todo tracking; multi-edit; patching; renaming; directory trees; code outline; diffing; web search; fetch; and more
+- **Agent mode**: Multi-turn task execution with automatic continuation, tool chaining, and `agentDone` completion
 - **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks and streaming responses
 - **Session persistence**: Save and load conversations across sessions
 - **Context management**: Automatic truncation when conversations exceed the context window
@@ -104,6 +105,8 @@ Example config:
 | `rename` | Rename or move files and directories |
 | `webSearch` | Search the web via SearXNG |
 | `fetchUrl` | Make HTTP requests to URLs |
+| `think` | Private scratchpad for planning |
+| `agentDone` | Mark a task as completed |
 
 ## Development
 
@@ -126,6 +129,7 @@ npm install
 
 ```text
 src/
+  agents/        Agent runner, loader, and config
   core/          Config, conversation engine, providers, sessions, types
   tools/         Built-in tools and tool registry
   ui/            Ink components, hooks, context

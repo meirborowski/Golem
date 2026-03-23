@@ -6,6 +6,7 @@ import { saveSession, loadSession, listSessions, exportToMarkdown } from '../../
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { listProviders, getProvider } from '../../core/provider-registry.js';
+import { loadAgent, listAgentNames } from '../../agents/agent-loader.js';
 import { Welcome } from './welcome.js';
 import { Message } from './message.js';
 import { InputBar } from './input-bar.js';
@@ -25,6 +26,8 @@ const HELP_TEXT = [
   '  /load [id]         Load a saved session (latest if no id)',
   '  /history           List saved sessions',
   '  /export [path]     Export conversation as markdown',
+  '  /agent [name]      Show or switch agent config',
+  '  /agents            List available agents',
   '  /exit, /quit       Exit Golem',
 ].join('\n');
 
@@ -46,7 +49,7 @@ function getErrorHint(error: string): string | null {
 }
 
 export function ChatView() {
-  const { config, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager } = useAppContext();
+  const { config, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
   const { messages, isStreaming, error, tokenUsage, sendMessage, cancelAgent, loadSession: loadIntoEngine } =
     useAgent();
   const [showWelcome, setShowWelcome] = useState(true);
@@ -289,6 +292,51 @@ export function ChatView() {
               content: `Failed to export: ${err instanceof Error ? err.message : String(err)}`,
             });
           }
+          return;
+        }
+
+        case 'agent': {
+          if (!arg) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Current agent: ${agent.name} — ${agent.description}`,
+            });
+            return;
+          }
+
+          const newAgent = loadAgent(arg, config.cwd);
+          if (!newAgent) {
+            dispatch({
+              type: 'ADD_SYSTEM_MESSAGE',
+              content: `Agent not found: "${arg}". Use /agents to list available agents.`,
+            });
+            return;
+          }
+
+          switchAgent(newAgent);
+          dispatch({
+            type: 'ADD_SYSTEM_MESSAGE',
+            content: `Switched to agent: ${newAgent.name} — ${newAgent.description}`,
+          });
+          return;
+        }
+
+        case 'agents': {
+          const names = listAgentNames(config.cwd);
+          if (names.length === 0) {
+            dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: 'No agents found.' });
+            return;
+          }
+
+          const lines = ['Available agents:', ''];
+          for (const name of names) {
+            const loaded = loadAgent(name, config.cwd);
+            const active = name === agent.name ? ' (active)' : '';
+            lines.push(`  ${name}${active}${loaded ? ` — ${loaded.description}` : ''}`);
+          }
+          lines.push('');
+          lines.push('Usage: /agent <name>');
+          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: lines.join('\n') });
           return;
         }
 

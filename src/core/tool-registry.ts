@@ -5,6 +5,26 @@ import type { ResolvedConfig, ApprovalCallback } from './types.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolSet = Record<string, any>;
 
+export interface ToolMeta {
+  description: string;
+  whenToUse: string;
+}
+
+/**
+ * Extract metadata (description + whenToUse) from a ToolSet.
+ * Tools are expected to have these as properties (added via Object.assign).
+ */
+export function getToolMeta(tools: ToolSet): Record<string, ToolMeta> {
+  const meta: Record<string, ToolMeta> = {};
+  for (const [name, toolDef] of Object.entries(tools)) {
+    meta[name] = {
+      description: (toolDef?.description as string) ?? '',
+      whenToUse: (toolDef?.whenToUse as string) ?? '',
+    };
+  }
+  return meta;
+}
+
 /**
  * Wrap a tool's parameters schema so that missing nullable properties
  * default to null before Zod validation. This keeps all properties in the
@@ -108,6 +128,7 @@ function wrapWithConditionalApproval(
 export function createBuiltinTools(
   config: ResolvedConfig,
   onApprovalNeeded?: ApprovalCallback,
+  toolNames?: string[],
 ): ToolSet {
   const cwd = config.cwd;
   const searxngBaseUrl =
@@ -135,9 +156,11 @@ export function createBuiltinTools(
     agentDone: agentDone(),
   };
 
-  // Normalize nullable params for cross-provider compatibility
+  // Filter to agent's allowed tools, then normalize
+  const allowedNames = toolNames ? new Set(toolNames) : null;
   const allTools: ToolSet = {};
   for (const [name, toolDef] of Object.entries(rawTools)) {
+    if (allowedNames && !allowedNames.has(name)) continue;
     allTools[name] = normalizeNullableParams(toolDef);
   }
 

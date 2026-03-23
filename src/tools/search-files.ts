@@ -12,16 +12,17 @@ interface SearchMatch {
 }
 
 export const searchFiles = (cwd: string) =>
-  tool({
-    description:
-      'Search file contents using a regex pattern. Returns matching lines with surrounding context. Respects .gitignore.',
-    inputSchema: z.object({
-      pattern: z.string().describe('Regex pattern to search for'),
-      glob: z.union([z.string(), z.null()]).describe('Glob pattern to filter which files to search. Null defaults to "**/*".'),
-      maxResults: z.union([z.number(), z.null()]).describe('Maximum number of matches to return. Null defaults to 50.'),
-      contextLines: z.union([z.number(), z.null()]).describe('Number of lines of context around each match. Null defaults to 2.'),
-    }),
-    execute: async ({ pattern, glob: rawGlob, maxResults: rawMax, contextLines: rawCtx }) => {
+  Object.assign(
+    tool({
+      description:
+        'Search file contents using a regex pattern. Returns matching lines with surrounding context. Respects .gitignore.',
+      inputSchema: z.object({
+        pattern: z.string().describe('Regex pattern to search for'),
+        glob: z.union([z.string(), z.null()]).describe('Glob pattern to filter which files to search. Null defaults to "**/*".'),
+        maxResults: z.union([z.number(), z.null()]).describe('Maximum number of matches to return. Null defaults to 50.'),
+        contextLines: z.union([z.number(), z.null()]).describe('Number of lines of context around each match. Null defaults to 2.'),
+      }),
+      execute: async ({ pattern, glob: rawGlob, maxResults: rawMax, contextLines: rawCtx }) => {
       const glob = rawGlob ?? '**/*';
       const maxResults = rawMax ?? 50;
       const contextLines = rawCtx ?? 2;
@@ -85,4 +86,6 @@ export const searchFiles = (cwd: string) =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When looking for specific code patterns, function definitions, imports, or text across the codebase.' },
+  );

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { ModelMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
 import type { McpToolDescription } from './mcp-client.js';
+import type { AgentConfig } from '../agents/agent-types.js';
 import { detectProject } from '../utils/detect-project.js';
 import { loadMemoryForPrompt } from './memory.js';
 import { logger } from '../utils/logger.js';
@@ -20,7 +21,12 @@ export class ConversationEngine {
     private model: LanguageModel,
     private tools: ToolSet,
     private readonly config: ResolvedConfig,
+    private agent: AgentConfig,
   ) {}
+
+  setAgent(agent: AgentConfig): void {
+    this.agent = agent;
+  }
 
   setMcpToolDescriptions(descriptions: McpToolDescription[]): void {
     this.mcpToolDescriptions = descriptions;
@@ -226,24 +232,28 @@ export class ConversationEngine {
   }
 
   private buildSystemPrompt(): string {
-    const parts: string[] = [
-      'You are Golem, an AI coding assistant running in the terminal.',
-      'You help users read, understand, and edit code in their projects.',
-      '',
-      '## Guidelines',
-      '- Be concise and direct in your responses.',
-      '- Use the available tools to read and modify files when asked.',
-      '- Always read a file before editing it.',
-      '- When editing files, provide enough context in oldText to ensure a unique match.',
-      '- Show relevant code snippets in your responses using markdown code blocks.',
-      '- If you are unsure about something, say so rather than guessing.',
-      '- Be efficient with tool calls. Read only the files you need — don\'t read every file in the project.',
-      '- After gathering enough context, respond with your answer. Don\'t keep reading more files.',
-      '',
-      `## Working Directory`,
-      `Current directory: ${this.config.cwd}`,
-    ];
+    const parts: string[] = [];
 
+    // Identity from agent config
+    const identity = this.agent.sections['identity'];
+    if (identity) {
+      parts.push(identity);
+    }
+
+    // Guidelines from agent config
+    const guidelines = this.agent.sections['guidelines'];
+    if (guidelines) {
+      parts.push('');
+      parts.push('## Guidelines');
+      parts.push(guidelines);
+    }
+
+    // Dynamic: working directory
+    parts.push('');
+    parts.push('## Working Directory');
+    parts.push(`Current directory: ${this.config.cwd}`);
+
+    // Dynamic: project info
     const project = detectProject(this.config.cwd);
     if (project) {
       parts.push('');
@@ -255,7 +265,7 @@ export class ConversationEngine {
       }
     }
 
-    // Load project docs (GOLEM.md, CLAUDE.md, or README.md)
+    // Dynamic: project docs
     const doc = this.loadProjectDoc();
     if (doc) {
       parts.push('');
@@ -263,7 +273,7 @@ export class ConversationEngine {
       parts.push(doc.content);
     }
 
-    // Load persistent memory
+    // Dynamic: persistent memory
     const memoryContent = loadMemoryForPrompt(this.config.cwd);
     if (memoryContent) {
       parts.push('');
@@ -271,29 +281,20 @@ export class ConversationEngine {
       parts.push(memoryContent);
     }
 
-    parts.push('');
-    parts.push('## Available Tools');
-    parts.push('- readFile: Read file contents with optional line range');
-    parts.push('- writeFile: Create or overwrite files with given content');
-    parts.push('- editFile: Apply find-and-replace edits to files');
-    parts.push('- listFiles: Find files matching glob patterns');
-    parts.push('- searchFiles: Search file contents with regex');
-    parts.push('- bash: Execute shell commands');
-    parts.push('- git: Git operations (status, diff, log, commit, push, branch, etc.)');
-    parts.push('- think: Private scratchpad for step-by-step reasoning');
-    parts.push('- fetchUrl: Make HTTP requests to URLs');
-    parts.push('- patch: Apply unified diffs to files');
-    parts.push('- todoManager: Break down tasks into tracked subtasks. Use this whenever a task involves modifying multiple files or performing distinct sequential operations (e.g. create file, update registry, add tests).');
-    parts.push('- memory: Persistent key-value store across sessions');
-    parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
-    parts.push('- codeOutline: Extract symbol outline (functions, classes, types) from a source file');
-    parts.push('- rename: Rename or move files and directories');
-    parts.push('- directoryTree: Visualize directory structure recursively');
-    parts.push('- webSearch: Search the web via SearXNG');
-    parts.push('- diffFiles: Compare files, git HEAD versions, or raw strings');
-    parts.push('- agentDone: Signal that you have completed the task');
+    // Tool descriptions from agent's resolved tool metadata
+    const toolMetaEntries = Object.entries(this.agent.toolMeta);
+    if (toolMetaEntries.length > 0) {
+      parts.push('');
+      parts.push('## Available Tools');
+      for (const [name, meta] of toolMetaEntries) {
+        parts.push(`- ${name}: ${meta.description}`);
+        if (meta.whenToUse) {
+          parts.push(`  When to use: ${meta.whenToUse}`);
+        }
+      }
+    }
 
-    // Add MCP tool descriptions grouped by server
+    // Dynamic: MCP tool descriptions
     if (this.mcpToolDescriptions.length > 0) {
       parts.push('');
       parts.push('## MCP Server Tools');
@@ -311,18 +312,13 @@ export class ConversationEngine {
       }
     }
 
-    parts.push('');
-    parts.push('## Agent Behavior');
-    parts.push('You operate autonomously. When given a task that requires making changes:');
-    parts.push('1. Use `think` to plan your approach before acting.');
-    parts.push('2. If the task involves modifying multiple files or performing distinct sequential operations, use `todoManager` to break it into individual subtasks — call `add` once per step (e.g. "Update README.md", "Fix CLAUDE.md", "Run tests"). Then as you work, mark each task "in-progress" when you start it and "done" when you finish it.');
-    parts.push('3. Execute step by step — read files before editing them.');
-    parts.push('4. Verify your changes (re-read modified files, run tests if applicable).');
-    parts.push('5. Call `agentDone` with a summary when the task is fully complete.');
-    parts.push('6. If a step fails, analyze the error and try an alternative approach.');
-    parts.push('7. Do not ask for clarification — make reasonable decisions and proceed.');
-    parts.push('');
-    parts.push('For questions or explanations (even if you read files to answer), just respond with your answer directly. Do NOT call agentDone for questions — only for tasks that modify files or produce artifacts.');
+    // Behavior from agent config
+    const behavior = this.agent.sections['behavior'];
+    if (behavior) {
+      parts.push('');
+      parts.push('## Agent Behavior');
+      parts.push(behavior);
+    }
 
     return parts.join('\n');
   }

@@ -90,22 +90,23 @@ function buildTree(
 }
 
 export const directoryTree = (cwd: string) =>
-  tool({
-    description:
-      'Show a tree view of a directory structure. Useful for understanding project layout and file organization.',
-    inputSchema: z.object({
-      path: z.string().describe('Relative directory path to tree, e.g. "src" or "."'),
-      maxDepth: z
-        .union([z.number(), z.null()])
-        .describe('Maximum recursion depth. Null defaults to 12.'),
-      includeFiles: z
-        .union([z.boolean(), z.null()])
-        .describe('Whether to include files or show only directories. Null defaults to true.'),
-      maxEntries: z
-        .union([z.number(), z.null()])
-        .describe('Maximum total entries to display. Null defaults to 200.'),
-    }),
-    execute: async ({ path: relPath, maxDepth: rawDepth, includeFiles: rawFiles, maxEntries: rawMax }) => {
+  Object.assign(
+    tool({
+      description:
+        'Show a tree view of a directory structure. Useful for understanding project layout and file organization.',
+      inputSchema: z.object({
+        path: z.string().describe('Relative directory path to tree, e.g. "src" or "."'),
+        maxDepth: z
+          .union([z.number(), z.null()])
+          .describe('Maximum recursion depth. Null defaults to 12.'),
+        includeFiles: z
+          .union([z.boolean(), z.null()])
+          .describe('Whether to include files or show only directories. Null defaults to true.'),
+        maxEntries: z
+          .union([z.number(), z.null()])
+          .describe('Maximum total entries to display. Null defaults to 200.'),
+      }),
+      execute: async ({ path: relPath, maxDepth: rawDepth, includeFiles: rawFiles, maxEntries: rawMax }) => {
       const maxDepth = rawDepth ?? 12;
       const includeFiles = rawFiles ?? true;
       const maxEntries = rawMax ?? 200;
@@ -151,4 +152,6 @@ export const directoryTree = (cwd: string) =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When you need an overview of project structure or directory layout to understand organization.' },
+  );

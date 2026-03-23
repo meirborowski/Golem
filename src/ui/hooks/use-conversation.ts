@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/app-context.js';
 import { ConversationEngine } from '../../core/conversation.js';
-import { createBuiltinTools } from '../../core/tool-registry.js';
+import { createBuiltinTools, getToolMeta } from '../../core/tool-registry.js';
 import { formatArgs } from '../../utils/format-args.js';
 import type { AgentTodoItem, ApprovalCallback, ChatMessage, TokenUsage, TurnResult, SendMessageOptions, ToolCallInfo } from '../../core/types.js';
 import type { ModelMessage } from 'ai';
@@ -26,7 +26,7 @@ function isToolError(result: unknown): boolean {
 }
 
 export function useConversation() {
-  const { state, dispatch, config, activeModel, mcpManager } = useAppContext();
+  const { state, dispatch, config, activeModel, mcpManager, agent } = useAppContext();
 
   // Keep a stable ref to dispatch so the approval callback never goes stale
   const dispatchRef = useRef(dispatch);
@@ -57,10 +57,14 @@ export function useConversation() {
 
   // Lazily create the engine with approval-wrapped tools
   if (!engineRef.current) {
-    const builtinTools = createBuiltinTools(config, approvalCallback);
+    const builtinTools = createBuiltinTools(config, approvalCallback, agent.tools);
     const mcpTools = mcpManager?.tools ?? {};
     const allTools = { ...builtinTools, ...mcpTools };
-    engineRef.current = new ConversationEngine(activeModel, allTools, config);
+
+    // Populate agent toolMeta from the created tools
+    agent.toolMeta = getToolMeta(allTools);
+
+    engineRef.current = new ConversationEngine(activeModel, allTools, config, agent);
     if (mcpManager) {
       engineRef.current.setMcpToolDescriptions(mcpManager.toolDescriptions);
     }

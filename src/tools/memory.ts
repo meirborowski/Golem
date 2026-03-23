@@ -4,24 +4,25 @@ import { memorySet, memoryGet, memoryDelete, memoryList, memoryClear } from '../
 import type { MemoryScope } from '../core/memory.js';
 
 export const memory = (cwd: string) =>
-  tool({
-    description:
-      'Persistent key-value memory that survives across sessions. Use "project" scope for project-specific context (stored in .golem/memory.json) and "global" scope for user preferences (stored in ~/.config/golem/memory.json). Store decisions, conventions, user preferences, or any context worth remembering.',
-    inputSchema: z.object({
-      action: z
-        .enum(['set', 'get', 'delete', 'list', 'clear'])
-        .describe('The action to perform'),
-      key: z
-        .union([z.string(), z.null()])
-        .describe('Memory key (required for set, get, delete). Use descriptive names like "test-framework" or "preferred-style".'),
-      value: z
-        .union([z.string(), z.null()])
-        .describe('Value to store (required for set).'),
-      scope: z
-        .union([z.enum(['global', 'project']), z.null()])
-        .describe('Where to store. "project" (default) for project-specific, "global" for cross-project preferences.'),
-    }),
-    execute: async ({ action, key, value, scope: rawScope }) => {
+  Object.assign(
+    tool({
+      description:
+        'Persistent key-value memory that survives across sessions. Use "project" scope for project-specific context (stored in .golem/memory.json) and "global" scope for user preferences (stored in ~/.config/golem/memory.json). Store decisions, conventions, user preferences, or any context worth remembering.',
+      inputSchema: z.object({
+        action: z
+          .enum(['set', 'get', 'delete', 'list', 'clear'])
+          .describe('The action to perform'),
+        key: z
+          .union([z.string(), z.null()])
+          .describe('Memory key (required for set, get, delete). Use descriptive names like "test-framework" or "preferred-style".'),
+        value: z
+          .union([z.string(), z.null()])
+          .describe('Value to store (required for set).'),
+        scope: z
+          .union([z.enum(['global', 'project']), z.null()])
+          .describe('Where to store. "project" (default) for project-specific, "global" for cross-project preferences.'),
+      }),
+      execute: async ({ action, key, value, scope: rawScope }) => {
       const scope: MemoryScope = rawScope ?? 'project';
 
       try {
@@ -90,4 +91,6 @@ export const memory = (cwd: string) =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When you learn important context worth preserving across sessions — project conventions, user preferences, key decisions, or recurring patterns.' },
+  );

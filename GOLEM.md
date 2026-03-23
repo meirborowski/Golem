@@ -11,14 +11,16 @@ Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It s
 Three-layer design with strict separation of concerns:
 
 ```text
-src/core/      — Pure logic. No React. Independently testable.
-src/ui/        — Ink components + hooks. Thin rendering layer.
-src/tools/     — Self-contained tool() definitions with Zod schemas.
-src/utils/     — Shared helpers (file I/O, logging, project detection).
+src/agents/    Agent loader/runner/types. Orchestrates multi-turn task execution.
+src/core/      Pure logic. No React. Independently testable.
+src/ui/        Ink components + hooks. Thin rendering layer.
+src/tools/     Self-contained tool() definitions with Zod schemas.
+src/utils/     Shared helpers (file I/O, logging, project detection).
 ```
 
 ### Core Components
 
+- **Agent Runner** (`src/agents/agent-runner.ts`): Coordinates multi-turn agent execution, continues until `agentDone`, max turns, cancellation, or repeated errors. Collects tool calls and final output.
 - **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt, and includes remembered context from project/global memory.
 - **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
 - **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) and conditional git operations with a callback gate.
@@ -27,7 +29,7 @@ src/utils/     — Shared helpers (file I/O, logging, project detection).
 
 ## State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
+Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions include the chat stream lifecycle and approval flow: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
 
 ## Rendering Performance
 
@@ -47,7 +49,7 @@ Single `useReducer` at the App level, distributed via React Context (`AppContext
 - **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters (Anthropic API requires all properties in `required`). Handle defaults in `execute()`.
 - **Errors**: Tools return `{ success: false, error: string }` — never throw.
 - **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout (Ink owns the terminal).
-- **Testing**: Prefer focused unit tests for core logic and tools. Mock external SDK boundaries instead of calling live providers.
+- **Testing**: Prefer focused unit tests for core logic, agents, and tools. Mock external SDK boundaries instead of calling live providers.
 
 ## How to Add a New Tool
 
@@ -173,7 +175,7 @@ golem --debug                       # Enable debug logging
 
 - Global: `~/.config/golem/config.json` (or `%APPDATA%\\golem\\config.json` on Windows)
 - Project: `.golem/config.json` (walks up from cwd)
-- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `etc.`
+- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.
 
 ### Config Options
 
@@ -195,6 +197,7 @@ golem --debug                       # Enable debug logging
 - **Framework**: Vitest
 - **Tools**: Test by calling `execute()` directly — they're pure functions
 - **ConversationEngine**: Test truncation, history, stream events, and system prompt building
+- **Agent runner**: Test multi-turn continuation, cancellation, and `agentDone` behavior
 - **Session**: Test save/load/list with temp directories
 - **Run**: `npm test`
 

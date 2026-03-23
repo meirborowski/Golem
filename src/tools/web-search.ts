@@ -14,22 +14,23 @@ interface SearxngResponse {
 }
 
 export const webSearch = (baseUrl: string) =>
-  tool({
-    description:
-      'Search the web using SearXNG. Returns titles, URLs, and snippets. Use for looking up documentation, APIs, error messages, or any current information.',
-    inputSchema: z.object({
-      query: z.string().describe('The search query'),
-      categories: z
-        .union([z.string(), z.null()])
-        .describe('Search categories: "general", "images", "news", "science", "it", etc. Null defaults to "general".'),
-      language: z
-        .union([z.string(), z.null()])
-        .describe('Language code, e.g. "en", "he", "de". Null defaults to "en".'),
-      maxResults: z
-        .union([z.number(), z.null()])
-        .describe('Maximum number of results to return. Null defaults to 10.'),
-    }),
-    execute: async ({ query, categories: rawCategories, language: rawLanguage, maxResults: rawMax }) => {
+  Object.assign(
+    tool({
+      description:
+        'Search the web using SearXNG. Returns titles, URLs, and snippets. Use for looking up documentation, APIs, error messages, or any current information.',
+      inputSchema: z.object({
+        query: z.string().describe('The search query'),
+        categories: z
+          .union([z.string(), z.null()])
+          .describe('Search categories: "general", "images", "news", "science", "it", etc. Null defaults to "general".'),
+        language: z
+          .union([z.string(), z.null()])
+          .describe('Language code, e.g. "en", "he", "de". Null defaults to "en".'),
+        maxResults: z
+          .union([z.number(), z.null()])
+          .describe('Maximum number of results to return. Null defaults to 10.'),
+      }),
+      execute: async ({ query, categories: rawCategories, language: rawLanguage, maxResults: rawMax }) => {
       const categories = rawCategories ?? 'general';
       const language = rawLanguage ?? 'en';
       const maxResults = rawMax ?? 10;
@@ -90,4 +91,6 @@ export const webSearch = (baseUrl: string) =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When you need current information — look up documentation, APIs, error messages, library usage, or recent changes not in your training data.' },
+  );

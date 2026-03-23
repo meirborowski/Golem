@@ -29,6 +29,7 @@ export interface GolemConfig {
   contextWindow?: number;
   temperature?: number;
   debug?: boolean;
+  agent?: string;
   providers?: Record<string, ProviderConfig>;
   mcpServers?: Record<string, McpServerConfig>;
 }
@@ -42,6 +43,7 @@ export interface ResolvedConfig {
   temperature: number | undefined;
   debug: boolean;
   cwd: string;
+  agent?: string;
   providers: Record<string, ProviderConfig>;
   mcpServers: Record<string, McpServerConfig>;
 }

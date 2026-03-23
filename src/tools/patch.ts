@@ -114,38 +114,41 @@ function applyUnifiedDiff(original: string, diff: string): { result: string; hun
 }
 
 export const patch = (cwd: string) =>
-  tool({
-    description:
-      'Apply a unified diff patch to a file. Supports standard unified diff format with @@ hunk headers. Use this for multi-hunk edits that would be cumbersome with editFile. The diff should use - for removed lines, + for added lines, and space for context lines.',
-    inputSchema: z.object({
-      filePath: z.string().describe('Absolute or relative path to the file to patch'),
-      diff: z.string().describe(
-        'Unified diff to apply. Must include @@ -start,count +start,count @@ hunk headers. Lines starting with - are removed, + are added, space or empty are context.',
-      ),
-    }),
-    execute: async ({ filePath, diff }) => {
-      try {
-        const resolved = resolvePath(filePath, cwd);
+  Object.assign(
+    tool({
+      description:
+        'Apply a unified diff patch to a file. Supports standard unified diff format with @@ hunk headers. Use this for multi-hunk edits that would be cumbersome with editFile. The diff should use - for removed lines, + for added lines, and space for context lines.',
+      inputSchema: z.object({
+        filePath: z.string().describe('Absolute or relative path to the file to patch'),
+        diff: z.string().describe(
+          'Unified diff to apply. Must include @@ -start,count +start,count @@ hunk headers. Lines starting with - are removed, + are added, space or empty are context.',
+        ),
+      }),
+      execute: async ({ filePath, diff }) => {
+        try {
+          const resolved = resolvePath(filePath, cwd);
 
-        if (!existsSync(resolved)) {
-          return { success: false, error: `File not found: ${filePath}` };
+          if (!existsSync(resolved)) {
+            return { success: false, error: `File not found: ${filePath}` };
+          }
+
+          const original = readFileSync(resolved, 'utf-8');
+          const { result, hunksApplied } = applyUnifiedDiff(original, diff);
+
+          writeFileSync(resolved, result, 'utf-8');
+
+          return {
+            success: true,
+            filePath: resolved,
+            hunksApplied,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
-
-        const original = readFileSync(resolved, 'utf-8');
-        const { result, hunksApplied } = applyUnifiedDiff(original, diff);
-
-        writeFileSync(resolved, result, 'utf-8');
-
-        return {
-          success: true,
-          filePath: resolved,
-          hunksApplied,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    },
-  });
+      },
+    }),
+    { whenToUse: 'When applying multi-hunk edits that would be cumbersome with editFile, or when you have a unified diff to apply.' },
+  );

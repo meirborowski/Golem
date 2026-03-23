@@ -4,6 +4,8 @@ import { ChatView } from './ui/components/chat-view.js';
 import { resolveModel, getDefaultModel, getProvider } from './core/provider-registry.js';
 import { createMcpManager, type McpManager } from './core/mcp-client.js';
 import { setActiveMcpManager } from './core/mcp-lifecycle.js';
+import { loadAgent } from './agents/agent-loader.js';
+import type { AgentConfig } from './agents/agent-types.js';
 import { logger } from './utils/logger.js';
 import type { ResolvedConfig } from './core/types.js';
 
@@ -18,6 +20,26 @@ export function App({ config }: AppProps) {
   );
   const [provider, setProvider] = useState(config.provider);
   const [mcpManager, setMcpManager] = useState<McpManager | null>(null);
+
+  // Load agent config
+  const [agent, setAgent] = useState<AgentConfig>(() => {
+    const agentName = config.agent ?? 'default';
+    const loaded = loadAgent(agentName, config.cwd);
+    if (!loaded) {
+      logger.error(`Agent "${agentName}" not found, falling back to default`);
+      const fallback = loadAgent('default', config.cwd);
+      if (!fallback) {
+        throw new Error('Default agent config not found. Ensure src/agents/configs/default.md exists.');
+      }
+      return fallback;
+    }
+    return loaded;
+  });
+
+  const switchAgent = useCallback((newAgent: AgentConfig) => {
+    setAgent(newAgent);
+    logger.info(`Switched to agent: ${newAgent.name}`);
+  }, []);
 
   // Initialize MCP servers in background
   useEffect(() => {
@@ -73,6 +95,8 @@ export function App({ config }: AppProps) {
       activeProvider={provider}
       switchModel={switchModel}
       mcpManager={mcpManager}
+      agent={agent}
+      switchAgent={switchAgent}
     >
       <ChatView />
     </AppContextProvider>

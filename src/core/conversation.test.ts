@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConversationEngine } from './conversation.js';
 import type { ResolvedConfig, TokenUsage } from './types.js';
+import type { AgentConfig } from '../agents/agent-types.js';
 
 const streamTextMock = vi.hoisted(() => vi.fn());
 const detectProjectMock = vi.hoisted(() => vi.fn());
@@ -39,13 +40,35 @@ const config: ResolvedConfig = {
   mcpServers: {},
 };
 
+const testAgent: AgentConfig = {
+  name: 'test',
+  description: 'Test agent',
+  sections: {
+    identity: 'You are a test assistant.',
+    guidelines: '- Be helpful.',
+    tools: '- readFile: Read files',
+    behavior: 'Answer questions directly.',
+  },
+  tools: ['readFile'],
+  toolMeta: {
+    readFile: {
+      description: 'Read file contents',
+      whenToUse: 'When you need to inspect file contents.',
+    },
+  },
+  maxTurns: 5,
+  maxConsecutiveErrors: 3,
+  continuationPrompt: 'Continue.',
+  stopCondition: 'default',
+};
+
 describe('ConversationEngine', () => {
   let engine: ConversationEngine;
 
   beforeEach(() => {
     vi.clearAllMocks();
     detectProjectMock.mockReturnValue(null);
-    engine = new ConversationEngine(fakeModel as never, fakeTools, config);
+    engine = new ConversationEngine(fakeModel as never, fakeTools, config, testAgent);
   });
 
   afterEach(() => {
@@ -202,7 +225,7 @@ describe('ConversationEngine', () => {
       });
 
       const promptConfig: ResolvedConfig = { ...config, cwd };
-      const promptEngine = new ConversationEngine(fakeModel as never, fakeTools, promptConfig);
+      const promptEngine = new ConversationEngine(fakeModel as never, fakeTools, promptConfig, testAgent);
 
       streamTextMock.mockReturnValue({
         fullStream: (async function* () {
@@ -230,8 +253,8 @@ describe('ConversationEngine', () => {
 
   describe('context window truncation', () => {
     it('truncates old messages when context is exceeded', async () => {
-      const smallConfig: ResolvedConfig = { ...config, contextWindow: 4000, maxTokens: 100 };
-      const smallEngine = new ConversationEngine(fakeModel as never, fakeTools, smallConfig);
+      const smallConfig: ResolvedConfig = { ...config, contextWindow: 2000, maxTokens: 100 };
+      const smallEngine = new ConversationEngine(fakeModel as never, fakeTools, smallConfig, testAgent);
 
       smallEngine.loadHistory([
         { role: 'user', content: 'A '.repeat(2000) },
@@ -258,7 +281,7 @@ describe('ConversationEngine', () => {
 
     it('does not truncate when within limits', async () => {
       const bigConfig: ResolvedConfig = { ...config, contextWindow: 100000 };
-      const bigEngine = new ConversationEngine(fakeModel as never, fakeTools, bigConfig);
+      const bigEngine = new ConversationEngine(fakeModel as never, fakeTools, bigConfig, testAgent);
 
       bigEngine.loadHistory([
         { role: 'user', content: 'short' },

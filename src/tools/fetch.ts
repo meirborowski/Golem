@@ -5,25 +5,26 @@ const DEFAULT_TIMEOUT = 15_000; // 15 seconds
 const MAX_RESPONSE_SIZE = 512 * 1024; // 512KB
 
 export const fetchUrl = () =>
-  tool({
-    description:
-      'Make an HTTP request to a URL. Supports GET and POST methods. Useful for checking API endpoints, fetching documentation, downloading JSON data, or testing webhooks. Returns the response status, headers, and body.',
-    inputSchema: z.object({
-      url: z.string().describe('The URL to fetch'),
-      method: z
-        .union([z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']), z.null()])
-        .describe('HTTP method. Null defaults to GET.'),
-      headers: z
-        .union([z.record(z.string()), z.null()])
-        .describe('Request headers as key-value pairs. Null for no custom headers.'),
-      body: z
-        .union([z.string(), z.null()])
-        .describe('Request body (for POST/PUT/PATCH). Null for no body.'),
-      timeout: z
-        .union([z.number(), z.null()])
-        .describe('Timeout in milliseconds. Null defaults to 15000.'),
-    }),
-    execute: async ({ url, method: rawMethod, headers: rawHeaders, body, timeout: rawTimeout }) => {
+  Object.assign(
+    tool({
+      description:
+        'Make an HTTP request to a URL. Supports GET and POST methods. Useful for checking API endpoints, fetching documentation, downloading JSON data, or testing webhooks. Returns the response status, headers, and body.',
+      inputSchema: z.object({
+        url: z.string().describe('The URL to fetch'),
+        method: z
+          .union([z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']), z.null()])
+          .describe('HTTP method. Null defaults to GET.'),
+        headers: z
+          .union([z.record(z.string()), z.null()])
+          .describe('Request headers as key-value pairs. Null for no custom headers.'),
+        body: z
+          .union([z.string(), z.null()])
+          .describe('Request body (for POST/PUT/PATCH). Null for no body.'),
+        timeout: z
+          .union([z.number(), z.null()])
+          .describe('Timeout in milliseconds. Null defaults to 15000.'),
+      }),
+      execute: async ({ url, method: rawMethod, headers: rawHeaders, body, timeout: rawTimeout }) => {
       const method = rawMethod ?? 'GET';
       const timeout = rawTimeout ?? DEFAULT_TIMEOUT;
       const headers: Record<string, string> = rawHeaders ?? {};
@@ -79,4 +80,6 @@ export const fetchUrl = () =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When you need to retrieve data from URLs — check API endpoints, download documentation, test webhooks, or fetch remote resources.' },
+  );

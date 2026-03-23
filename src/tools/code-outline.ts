@@ -224,36 +224,39 @@ function formatSymbols(symbols: Symbol[], language: string): string {
 }
 
 export const codeOutline = (cwd: string) =>
-  tool({
-    description:
-      'Extract an outline of symbols (functions, classes, types, etc.) from a source file with line numbers. Supports TypeScript, JavaScript, Python, Go, Rust, Java, C/C++, Ruby, PHP, C#, Kotlin, Swift, Scala, Dart, Lua, Shell, and Elixir. Use this to understand file structure without reading the entire file.',
-    inputSchema: z.object({
-      filePath: z.string().describe('Path to the source file (relative to cwd or absolute)'),
-    }),
-    execute: async ({ filePath }) => {
-      try {
-        const resolved = resolvePath(filePath, cwd);
+  Object.assign(
+    tool({
+      description:
+        'Extract an outline of symbols (functions, classes, types, etc.) from a source file with line numbers. Supports TypeScript, JavaScript, Python, Go, Rust, Java, C/C++, Ruby, PHP, C#, Kotlin, Swift, Scala, Dart, Lua, Shell, and Elixir. Use this to understand file structure without reading the entire file.',
+      inputSchema: z.object({
+        filePath: z.string().describe('Path to the source file (relative to cwd or absolute)'),
+      }),
+      execute: async ({ filePath }) => {
+        try {
+          const resolved = resolvePath(filePath, cwd);
 
-        if (!existsSync(resolved)) {
-          return { success: false, error: `File not found: ${resolved}` };
+          if (!existsSync(resolved)) {
+            return { success: false, error: `File not found: ${resolved}` };
+          }
+
+          const content = readFileSync(resolved, 'utf-8');
+          const language = detectLanguage(resolved);
+          const symbols = extractSymbols(content, resolved);
+
+          return {
+            success: true,
+            filePath: resolved,
+            language,
+            symbolCount: symbols.length,
+            outline: formatSymbols(symbols, language),
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
-
-        const content = readFileSync(resolved, 'utf-8');
-        const language = detectLanguage(resolved);
-        const symbols = extractSymbols(content, resolved);
-
-        return {
-          success: true,
-          filePath: resolved,
-          language,
-          symbolCount: symbols.length,
-          outline: formatSymbols(symbols, language),
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    },
-  });
+      },
+    }),
+    { whenToUse: 'When you need to understand a file structure without reading the entire contents — find functions, classes, and types quickly.' },
+  );

@@ -32,13 +32,14 @@ async function getGitHeadContent(filePath: string, cwd: string): Promise<string>
 }
 
 export const diffFiles = (cwd: string) =>
-  tool({
-    description:
-      'Compare two files, a file against its git HEAD version, or two raw text strings. Returns a unified diff with change statistics.',
-    inputSchema: z.object({
-      filePath1: z
-        .union([z.string(), z.null()])
-        .describe('Path to the first file (for file comparison or git HEAD mode)'),
+  Object.assign(
+    tool({
+      description:
+        'Compare two files, a file against its git HEAD version, or two raw text strings. Returns a unified diff with change statistics.',
+      inputSchema: z.object({
+        filePath1: z
+          .union([z.string(), z.null()])
+          .describe('Path to the first file (for file comparison or git HEAD mode)'),
       filePath2: z
         .union([z.string(), z.null()])
         .describe('Path to the second file (for two-file comparison)'),
@@ -127,4 +128,6 @@ export const diffFiles = (cwd: string) =>
         };
       }
     },
-  });
+    }),
+    { whenToUse: 'When comparing files, checking what changed against git HEAD, or diffing text strings to understand differences.' },
+  );
