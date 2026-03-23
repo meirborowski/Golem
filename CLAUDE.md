@@ -10,7 +10,7 @@ Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It s
 
 Three-layer design with strict separation of concerns:
 
-```
+```text
 src/core/      — Pure logic. No React. Independently testable.
 src/ui/        — Ink components + hooks. Thin rendering layer.
 src/tools/     — Self-contained tool() definitions with Zod schemas.
@@ -19,21 +19,17 @@ src/utils/     — Shared helpers (file I/O, logging, project detection).
 
 ### Core Components
 
-- **ConversationEngine** (`src/core/conversation.ts`): Class that manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages) and loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt.
+- **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt, and includes remembered context from project/global memory.
 - **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
-- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) with a callback gate.
+- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) and conditional git operations with a callback gate.
 - **Config** (`src/core/config.ts`): Layered resolution: defaults < global file < project file < env vars < CLI args.
 - **Session** (`src/core/session.ts`): Saves/loads/lists conversation sessions as JSON files in `~/.config/golem/sessions/`.
 
-### State Management
+## State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`, `START_AGENT_MODE`, `AGENT_TURN_COMPLETE`, `STOP_AGENT_MODE`.
+Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
 
-### Agent Mode
-
-Golem operates in agent mode by default. After each user message, the AI autonomously plans, executes tools, and continues across multiple turns until the task is complete. The `useAgent` hook (`src/ui/hooks/use-agent.ts`) wraps `useConversation` with an auto-continuation loop. Stop conditions: `agentDone` tool called, no tool calls in response (simple Q&A), max 20 turns, Escape key, or 3 consecutive errors.
-
-### Rendering Performance
+## Rendering Performance
 
 - Completed messages use Ink's `<Static>` — rendered once, never redrawn.
 - Only the active streaming message + input bar redraws during streaming.
@@ -43,14 +39,15 @@ Golem operates in agent mode by default. After each user message, the AI autonom
 
 ## Code Conventions
 
-- **TypeScript strict mode**. No `any`. Use `unknown` and narrow.
+- **TypeScript strict mode**. Avoid `any`; prefer `unknown` and narrow deliberately. A few test-only casts are acceptable when mocking external SDK types.
 - **Named exports only** — no default exports.
 - **File naming**: kebab-case. React = `.tsx`, everything else = `.ts`.
 - **Imports**: Use `type` keyword for type-only imports. Always use `.js` extension in import paths (ESM requirement).
 - **Tools**: One file per tool in `src/tools/`. Export as named constant (factory function taking `cwd`).
-- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters. Do NOT add `.default(null)` — the tool registry normalizes missing nullable params automatically. Handle defaults in `execute()`.
+- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters (Anthropic API requires all properties in `required`). Handle defaults in `execute()`.
 - **Errors**: Tools return `{ success: false, error: string }` — never throw.
 - **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout (Ink owns the terminal).
+- **Testing**: Prefer focused unit tests for core logic and tools. Mock external SDK boundaries instead of calling live providers.
 
 ## How to Add a New Tool
 
@@ -63,7 +60,7 @@ import { z } from 'zod';
 export const myTool = (cwd: string) =>
   tool({
     description: 'What this tool does',
-    inputSchema: z.object({
+    parameters: z.object({
       param1: z.string().describe('Description'),
       optionalParam: z.union([z.number(), z.null()]).describe('Optional. Null defaults to 10.'),
     }),
@@ -109,61 +106,19 @@ providers.set('myProvider', {
 | `listFiles` | `src/tools/list-files.ts` | Glob-based file discovery |
 | `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
 | `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
-| `git` | `src/tools/git.ts` | Git operations (status, diff, log, commit, push, branch, etc.) |
-| `think` | `src/tools/think.ts` | Private scratchpad for step-by-step reasoning |
-| `fetchUrl` | `src/tools/fetch.ts` | Make HTTP requests to URLs |
-| `patch` | `src/tools/patch.ts` | Apply unified diffs to files |
-| `todoManager` | `src/tools/todo-manager.ts` | Track tasks within the session |
-| `memory` | `src/tools/memory.ts` | Persistent key-value store across sessions |
-| `multiEdit` | `src/tools/multi-edit.ts` | Apply multiple find-and-replace edits to a file in one call |
-| `codeOutline` | `src/tools/code-outline.ts` | Extract symbol outline (functions, classes, types) from a source file |
+| `git` | `src/tools/git.ts` | Git operations with read-only/approval-aware gating |
+| `memory` | `src/tools/memory.ts` | Persist key/value context across sessions |
+| `todoManager` | `src/tools/todo-manager.ts` | Track multi-step work items |
+| `multiEdit` | `src/tools/multi-edit.ts` | Apply multiple replacements in one pass |
+| `patch` | `src/tools/patch.ts` | Apply unified diffs |
+| `directoryTree` | `src/tools/directory-tree.ts` | Show directory structure |
+| `codeOutline` | `src/tools/code-outline.ts` | Extract symbols from source files |
+| `diffFiles` | `src/tools/diff-files.ts` | Compare files or raw content |
 | `rename` | `src/tools/rename.ts` | Rename or move files and directories |
-| `directoryTree` | `src/tools/directory-tree.ts` | Visualize directory structure recursively |
-| `webSearch` | `src/tools/web-search.ts` | Web search via SearXNG |
-| `diffFiles` | `src/tools/diff-files.ts` | Compare files, git HEAD versions, or raw strings |
-| `agentDone` | `src/tools/agent-done.ts` | Signal task completion with summary |
-
-## MCP Server Support
-
-Golem supports connecting to external [MCP (Model Context Protocol)](https://modelcontextprotocol.io) servers, giving the AI access to additional tools beyond the built-in set.
-
-### Configuration
-
-Add an `mcpServers` key to your global or project config:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "ghp_..." }
-    },
-    "custom-api": {
-      "url": "https://mcp.example.com/sse",
-      "headers": { "Authorization": "Bearer ..." }
-    }
-  }
-}
-```
-
-- **Stdio transport**: Set `command` (and optional `args`, `env`) to spawn a local MCP server process.
-- **SSE/HTTP transport**: Set `url` (and optional `headers`) to connect to a remote MCP server.
-
-### Behavior
-
-- Tools are namespaced as `{serverName}_{toolName}` to avoid collisions with built-in tools.
-- **All MCP tool calls require user approval** since they execute external code.
-- Servers connect in the background at startup — the UI is not blocked.
-- If a server fails to connect, Golem logs a warning and continues without it.
-- MCP clients are cleaned up on exit (SIGINT/SIGTERM).
-
-### Architecture
-
-| File | Purpose |
-|------|---------|
-| `src/core/mcp-client.ts` | MCP client manager: connect, discover tools, namespace, wrap with approval |
-| `src/core/mcp-lifecycle.ts` | Module-level ref for process exit cleanup |
+| `webSearch` | `src/tools/web-search.ts` | Search the web via SearXNG |
+| `fetchUrl` | `src/tools/fetch.ts` | Make HTTP requests to URLs |
+| `think` | `src/tools/think.ts` | Private scratchpad for planning |
+| `agentDone` | `src/tools/agent-done.ts` | Mark a task as completed |
 
 ## Slash Commands
 
@@ -178,6 +133,21 @@ Add an `mcpServers` key to your global or project config:
 | `/history` | List saved sessions |
 | `/exit`, `/quit` | Exit Golem |
 
+## Agent Rules
+
+When acting as Golem in this repository:
+
+1. Use `think` before making changes that touch multiple files or require tradeoffs.
+2. Read the relevant files before editing them.
+3. Keep changes minimal and focused on the requested task.
+4. Verify edits by re-reading files and running tests when appropriate.
+5. Prefer test-first or test-aligned changes for core behavior.
+6. Do not guess about code you have not inspected.
+7. Use existing project conventions: strict TypeScript, named exports, `.js` import suffixes, and no stdout logging.
+8. For tools, return `{ success: false, error: string }` instead of throwing from tool logic.
+9. For tasks that modify files or create artifacts, finish by confirming what changed.
+10. Do not ask for clarification unless the task is genuinely ambiguous and blocking.
+
 ## Build & Run
 
 ```bash
@@ -185,7 +155,7 @@ npm install          # Install dependencies
 npm run dev          # Run in dev mode (tsx)
 npm run build        # Compile TypeScript -> dist/
 npm run start        # Run compiled version
-npm test             # Run vitest (167 tests)
+npm test             # Run vitest
 npm run typecheck    # Type-check without emitting
 npm run format       # Format with Prettier
 ```
@@ -193,17 +163,17 @@ npm run format       # Format with Prettier
 ## CLI Usage
 
 ```bash
-golem                              # Default (Anthropic Claude)
-golem --provider openai -m gpt-4o  # Use OpenAI
-golem --provider ollama -m llama3.1 # Use local Ollama
-golem --debug                      # Enable debug logging
+golem                               # Default (Anthropic Claude)
+golem --provider openai -m gpt-4o   # Use OpenAI
+golem --provider ollama -m llama3.1  # Use local Ollama
+golem --debug                       # Enable debug logging
 ```
 
 ## Config Files
 
-- Global: `~/.config/golem/config.json` (or `%APPDATA%\golem\config.json` on Windows)
+- Global: `~/.config/golem/config.json` (or `%APPDATA%\\golem\\config.json` on Windows)
 - Project: `.golem/config.json` (walks up from cwd)
-- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `SEARXNG_BASE_URL`, etc.
+- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.
 
 ### Config Options
 
@@ -215,8 +185,7 @@ golem --debug                      # Enable debug logging
   "contextWindow": 128000,
   "temperature": 0.7,
   "providers": {
-    "ollama": { "baseUrl": "http://localhost:11434/api" },
-    "searxng": { "baseUrl": "http://localhost:8080" }
+    "ollama": { "baseUrl": "http://localhost:11434/api" }
   }
 }
 ```
@@ -224,9 +193,8 @@ golem --debug                      # Enable debug logging
 ## Testing
 
 - **Framework**: Vitest
-- **167 tests** across 8 test files
 - **Tools**: Test by calling `execute()` directly — they're pure functions
-- **ConversationEngine**: Test truncation, history, system prompt building
+- **ConversationEngine**: Test truncation, history, stream events, and system prompt building
 - **Session**: Test save/load/list with temp directories
 - **Run**: `npm test`
 
@@ -234,13 +202,11 @@ golem --debug                      # Enable debug logging
 
 | Package | Purpose |
 |---------|---------|
-| `ai` | Vercel AI SDK v6 — `streamText`, `tool`, message types |
+| `ai` | Vercel AI SDK — `streamText`, `tool`, message types |
 | `@ai-sdk/anthropic` | Anthropic provider |
 | `@ai-sdk/openai` | OpenAI provider |
 | `@ai-sdk/google` | Google Gemini provider |
 | `ollama-ai-provider` | Ollama local model provider |
-| `@ai-sdk/mcp` | MCP client adapter for Vercel AI SDK |
-| `@modelcontextprotocol/sdk` | MCP protocol SDK (transports) |
 | `zod` | Schema validation for tool inputs |
 | `ink` | React-based terminal UI |
 | `ink-spinner` | Loading spinner |

@@ -59,6 +59,26 @@ export function AgentProgress({ agentMode }: { agentMode: AgentModeState }) {
           )}
         </Box>
       ))}
+
+      {agentMode.todos.length > 0 && (
+        <Box flexDirection="column" marginTop={1} marginLeft={2}>
+          <Text bold dimColor>Tasks:</Text>
+          {agentMode.todos.map((todo) => (
+            <Box key={todo.id} marginLeft={1}>
+              {todo.status === 'done' ? (
+                <Text color="green">V</Text>
+              ) : todo.status === 'in-progress' ? (
+                <Text color="yellow">{'>'}</Text>
+              ) : (
+                <Text dimColor>○</Text>
+              )}
+              <Text color={todo.status === 'done' ? 'green' : todo.status === 'in-progress' ? 'yellow' : undefined} dimColor={todo.status === 'pending'}>
+                {' '}{todo.task}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }

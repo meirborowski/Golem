@@ -283,7 +283,7 @@ export class ConversationEngine {
     parts.push('- think: Private scratchpad for step-by-step reasoning');
     parts.push('- fetchUrl: Make HTTP requests to URLs');
     parts.push('- patch: Apply unified diffs to files');
-    parts.push('- todoManager: Track tasks within the session');
+    parts.push('- todoManager: Break down tasks into tracked subtasks. Use this whenever a task involves modifying multiple files or performing distinct sequential operations (e.g. create file, update registry, add tests).');
     parts.push('- memory: Persistent key-value store across sessions');
     parts.push('- multiEdit: Apply multiple find-and-replace edits to a file in one call');
     parts.push('- codeOutline: Extract symbol outline (functions, classes, types) from a source file');
@@ -315,11 +315,12 @@ export class ConversationEngine {
     parts.push('## Agent Behavior');
     parts.push('You operate autonomously. When given a task that requires making changes:');
     parts.push('1. Use `think` to plan your approach before acting.');
-    parts.push('2. Execute step by step — read files before editing them.');
-    parts.push('3. Verify your changes (re-read modified files, run tests if applicable).');
-    parts.push('4. Call `agentDone` with a summary when the task is fully complete.');
-    parts.push('5. If a step fails, analyze the error and try an alternative approach.');
-    parts.push('6. Do not ask for clarification — make reasonable decisions and proceed.');
+    parts.push('2. If the task involves modifying multiple files or performing distinct sequential operations, use `todoManager` to break it into individual subtasks — call `add` once per step (e.g. "Update README.md", "Fix CLAUDE.md", "Run tests"). Then as you work, mark each task "in-progress" when you start it and "done" when you finish it.');
+    parts.push('3. Execute step by step — read files before editing them.');
+    parts.push('4. Verify your changes (re-read modified files, run tests if applicable).');
+    parts.push('5. Call `agentDone` with a summary when the task is fully complete.');
+    parts.push('6. If a step fails, analyze the error and try an alternative approach.');
+    parts.push('7. Do not ask for clarification — make reasonable decisions and proceed.');
     parts.push('');
     parts.push('For questions or explanations (even if you read files to answer), just respond with your answer directly. Do NOT call agentDone for questions — only for tasks that modify files or produce artifacts.');
 

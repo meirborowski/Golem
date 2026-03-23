@@ -171,9 +171,9 @@ golem --debug                       # Enable debug logging
 
 ## Config Files
 
-- Global: `~/.config/golem/config.json` (or `%APPDATA%\golem\config.json` on Windows)
+- Global: `~/.config/golem/config.json` (or `%APPDATA%\\golem\\config.json` on Windows)
 - Project: `.golem/config.json` (walks up from cwd)
-- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.
+- Env vars: `GOLEM_PROVIDER`, `GOLEM_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `etc.`
 
 ### Config Options
 

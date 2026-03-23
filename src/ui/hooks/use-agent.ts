@@ -96,7 +96,20 @@ export function useAgent() {
         dispatch({ type: 'SET_ERROR', error: errorText });
         dispatch({ type: 'STOP_AGENT_MODE', status: 'error' });
       } else {
-        const finalText = lastText || 'Task completed.';
+        // Extract summary from agentDone tool result if no text was produced
+        let finalText = lastText;
+        if (!finalText) {
+          const agentDoneCall = allToolCalls.find((tc) => tc.toolName === 'agentDone' && tc.result != null);
+          if (agentDoneCall && typeof agentDoneCall.result === 'object') {
+            const result = agentDoneCall.result as Record<string, unknown>;
+            if (typeof result['summary'] === 'string') {
+              finalText = result['summary'];
+            } else if (typeof result['_summary'] === 'string') {
+              finalText = result['_summary'];
+            }
+          }
+        }
+        finalText = finalText || 'Task completed.';
         dispatch({ type: 'SET_AGENT_FINAL_MESSAGE', content: finalText, toolCalls: allToolCalls });
         dispatch({ type: 'STOP_AGENT_MODE', status: 'completed' });
       }

@@ -32,6 +32,10 @@ function formatList(items: TodoItem[]): string {
     .join('\n');
 }
 
+function toItemsSummary(items: TodoItem[]) {
+  return items.map((item) => ({ id: item.id, task: item.task, status: item.status }));
+}
+
 export const todoManager = (cwd: string) =>
   tool({
     description:
@@ -69,6 +73,7 @@ export const todoManager = (cwd: string) =>
             success: true,
             message: `Added task #${item.id}: ${item.task}`,
             tasks: formatList(list),
+            items: toItemsSummary(list),
           };
         }
 
@@ -86,6 +91,7 @@ export const todoManager = (cwd: string) =>
             success: true,
             message: `Updated task #${id}`,
             tasks: formatList(list),
+            items: toItemsSummary(list),
           };
         }
 
@@ -102,6 +108,7 @@ export const todoManager = (cwd: string) =>
             success: true,
             message: `Removed task #${removed.id}: ${removed.task}`,
             tasks: formatList(list),
+            items: toItemsSummary(list),
           };
         }
 
@@ -113,6 +120,7 @@ export const todoManager = (cwd: string) =>
             inProgress: list.filter((t) => t.status === 'in-progress').length,
             done: list.filter((t) => t.status === 'done').length,
             tasks: formatList(list),
+            items: toItemsSummary(list),
           };
         }
 
@@ -123,6 +131,7 @@ export const todoManager = (cwd: string) =>
             success: true,
             message: `Cleared ${count} tasks`,
             tasks: formatList(list),
+            items: toItemsSummary(list),
           };
         }
 

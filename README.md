@@ -5,8 +5,8 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 ## Features
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
-- **Built-in tools**: Read, write, edit files, glob search, regex search, shell commands, git, memory, todo tracking, multi-edit, patching, renaming, directory trees, code outline, diffing, web search, fetch, and more
-- **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks, streaming responses
+- **Built-in tools**: Read, write, edit files; glob and regex search; shell commands; git; memory; todo tracking; multi-edit; patching; renaming; directory trees; code outline; diffing; web search; fetch; and more
+- **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks and streaming responses
 - **Session persistence**: Save and load conversations across sessions
 - **Context management**: Automatic truncation when conversations exceed the context window
 - **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt and includes remembered context
@@ -19,7 +19,7 @@ If you’re using Golem inside this repo, read [GOLEM.md](GOLEM.md) for the proj
 ## Prerequisites
 
 - Node.js >= 20.0.0
-- An API key for at least one provider (or a local Ollama instance)
+- An API key for at least one provider, or a local Ollama instance
 
 ## Installation
 

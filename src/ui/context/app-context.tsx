@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import type { AppState, AppAction, ResolvedConfig, LanguageModel } from '../../core/types.js';
+import type { AppState, AppAction, ResolvedConfig, LanguageModel, AgentTodoItem } from '../../core/types.js';
 import type { McpManager } from '../../core/mcp-client.js';
 
 const initialState: AppState = {
@@ -114,6 +114,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           status: 'running',
           toolActivity: [],
           totalToolsExecuted: 0,
+          todos: [],
         },
       };
 
@@ -163,6 +164,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
           ...state.agentMode,
           toolActivity,
           totalToolsExecuted: state.agentMode.totalToolsExecuted + 1,
+        },
+      };
+    }
+
+    case 'AGENT_UPDATE_TODOS': {
+      if (!state.agentMode) return state;
+      return {
+        ...state,
+        agentMode: {
+          ...state.agentMode,
+          todos: action.todos,
         },
       };
     }

@@ -98,6 +98,12 @@ export interface AgentToolActivity {
   durationMs?: number;
 }
 
+export interface AgentTodoItem {
+  id: number;
+  task: string;
+  status: 'pending' | 'in-progress' | 'done';
+}
+
 export interface AgentModeState {
   task: string;
   currentTurn: number;
@@ -105,6 +111,7 @@ export interface AgentModeState {
   status: 'running' | 'completed' | 'cancelled' | 'error';
   toolActivity: AgentToolActivity[];
   totalToolsExecuted: number;
+  todos: AgentTodoItem[];
 }
 
 // ── App State ───────────────────────────────────────────────────────────────
@@ -151,6 +158,7 @@ export type AppAction =
   | { type: 'STOP_AGENT_MODE'; status: 'completed' | 'cancelled' | 'error' }
   | { type: 'AGENT_TOOL_START'; toolName: string; argsPreview: string }
   | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error'; durationMs?: number }
+  | { type: 'AGENT_UPDATE_TODOS'; todos: AgentTodoItem[] }
   | { type: 'SET_AGENT_FINAL_MESSAGE'; content: string; toolCalls?: ToolCallInfo[] };
 
 // ── Turn Result ─────────────────────────────────────────────────────────────
