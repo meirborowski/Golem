@@ -68,11 +68,11 @@ jobs:
 
       - name: Set version from tag
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm version --no-git-tag-version "${GITHUB_REF#refs/tags/v}"
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF#refs/tags/v}"
 
       - name: Set version from input
         if: github.event.inputs.version
-        run: npm version --no-git-tag-version "${{ github.event.inputs.version }}"
+        run: npm version --no-git-tag-version --allow-same-version "${{ github.event.inputs.version }}"
 
       - name: Use npm README
         run: cp README.md README.github.bak && cp README.npm.md README.md
