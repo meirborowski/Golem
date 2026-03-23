@@ -74,6 +74,9 @@ jobs:
         if: github.event.inputs.version
         run: npm version --no-git-tag-version "${{ github.event.inputs.version }}"
 
+      - name: Use npm README
+        run: cp README.md README.github.bak && cp README.npm.md README.md
+
       - name: Publish to npm
         run: |
           TAG="${{ github.event.inputs.tag || 'latest' }}"

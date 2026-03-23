@@ -2,9 +2,6 @@
 
 A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and edit files, search codebases, and run commands — all from your terminal.
 
-[![npm version](https://img.shields.io/npm/v/golem-cli)](https://www.npmjs.com/package/golem-cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 ## Features
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
@@ -27,11 +24,23 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 npm install -g golem-cli
 ```
 
+This installs the `golem` command globally.
+
 ## Quick Start
+
+Set your API key:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-...
+# or
+export OPENAI_API_KEY=sk-...
+# or
+export GOOGLE_GENERATIVE_AI_API_KEY=...
+```
 
+Run Golem:
+
+```bash
 golem                                          # Default (Anthropic Claude)
 golem --provider openai --model gpt-4o         # Use OpenAI
 golem --provider ollama --model llama3.1       # Use local Ollama
@@ -105,35 +114,10 @@ Example config:
 | `webSearch` | Search the web via SearXNG |
 | `fetchUrl` | Make HTTP requests to URLs |
 
-## Development
-
-```bash
-git clone https://github.com/AdiYd/Golem.git
-cd Golem
-npm install
-```
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Run in development mode (tsx) |
-| `npm run build` | Compile TypeScript to dist/ |
-| `npm start` | Run compiled version |
-| `npm test` | Run tests via Vitest |
-| `npm run typecheck` | Type-check without emitting |
-| `npm run format` | Format with Prettier |
-
-## Architecture
-
-```text
-src/
-  core/          Config, conversation engine, providers, sessions, types
-  tools/         Built-in tools and tool registry
-  ui/            Ink components, hooks, context
-  utils/         File I/O, logging, project detection
-```
-
-See [CLAUDE.md](CLAUDE.md) for detailed architecture and contribution guide.
-
 ## License
 
 MIT
+
+## Links
+
+- [GitHub Repository](https://github.com/AdiYd/Golem)
