@@ -108,7 +108,7 @@ Example config:
 ## Development
 
 ```bash
-git clone https://github.com/AdiYd/Golem.git
+git clone https://github.com/meirborowski/Golem.git
 cd Golem
 npm install
 ```

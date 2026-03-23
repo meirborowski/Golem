@@ -15,7 +15,9 @@
     "dist/**/*.d.ts",
     "!dist/**/*.test.*",
     "README.md",
-    "LICENSE"
+    "README.npm.md",
+    "LICENSE",
+    "!README.github.bak"
   ],
   "scripts": {
     "dev": "tsx src/index.tsx",

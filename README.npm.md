@@ -120,4 +120,4 @@ MIT
 
 ## Links
 
-- [GitHub Repository](https://github.com/AdiYd/Golem)
+- [GitHub Repository](https://github.com/meirborowski/Golem)
