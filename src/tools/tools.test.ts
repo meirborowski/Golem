@@ -480,7 +480,7 @@ describe('todoManager tool', () => {
   it('adds a task', async () => {
     const tool = todoManager(TODO_CWD) as unknown as AnyTool;
     const result = await tool.execute(
-      { action: 'add', task: 'Fix the bug', id: null, status: null },
+      { action: 'add', task: 'Fix the bug', id: null, status: null, dependsOn: null, priority: null, steps: null },
       { toolCallId: 'test', messages: [] },
     );
 
@@ -490,10 +490,10 @@ describe('todoManager tool', () => {
 
   it('lists tasks', async () => {
     const tool = todoManager(TODO_CWD + '-list') as unknown as AnyTool;
-    await tool.execute({ action: 'add', task: 'Task A', id: null, status: null }, { toolCallId: 'test', messages: [] });
-    await tool.execute({ action: 'add', task: 'Task B', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'Task A', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'Task B', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
-    const result = await tool.execute({ action: 'list', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+    const result = await tool.execute({ action: 'list', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
     expect(result.total).toBe(2);
@@ -503,13 +503,13 @@ describe('todoManager tool', () => {
 
   it('updates task status', async () => {
     const tool = todoManager(TODO_CWD + '-update') as unknown as AnyTool;
-    const addResult = await tool.execute({ action: 'add', task: 'Do stuff', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    const addResult = await tool.execute({ action: 'add', task: 'Do stuff', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     // Extract the ID from the message
     const idMatch = (addResult.message as string).match(/#(\d+)/);
     const id = parseInt(idMatch![1], 10);
 
-    const result = await tool.execute({ action: 'update', task: null, id, status: 'done' }, { toolCallId: 'test', messages: [] });
+    const result = await tool.execute({ action: 'update', task: null, id, status: 'done', dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
     expect(result.tasks).toContain('done');
@@ -517,12 +517,12 @@ describe('todoManager tool', () => {
 
   it('removes a task', async () => {
     const tool = todoManager(TODO_CWD + '-remove') as unknown as AnyTool;
-    const addResult = await tool.execute({ action: 'add', task: 'Temp task', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    const addResult = await tool.execute({ action: 'add', task: 'Temp task', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     const idMatch = (addResult.message as string).match(/#(\d+)/);
     const id = parseInt(idMatch![1], 10);
 
-    const result = await tool.execute({ action: 'remove', task: null, id, status: null }, { toolCallId: 'test', messages: [] });
+    const result = await tool.execute({ action: 'remove', task: null, id, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
     expect(result.message).toContain('Removed');
@@ -530,10 +530,10 @@ describe('todoManager tool', () => {
 
   it('clears all tasks', async () => {
     const tool = todoManager(TODO_CWD + '-clear') as unknown as AnyTool;
-    await tool.execute({ action: 'add', task: 'A', id: null, status: null }, { toolCallId: 'test', messages: [] });
-    await tool.execute({ action: 'add', task: 'B', id: null, status: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'A', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    await tool.execute({ action: 'add', task: 'B', id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
-    const result = await tool.execute({ action: 'clear', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+    const result = await tool.execute({ action: 'clear', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(true);
     expect(result.message).toContain('Cleared 2');
@@ -541,10 +541,117 @@ describe('todoManager tool', () => {
 
   it('returns error for missing task on add', async () => {
     const tool = todoManager(TODO_CWD + '-err') as unknown as AnyTool;
-    const result = await tool.execute({ action: 'add', task: null, id: null, status: null }, { toolCallId: 'test', messages: [] });
+    const result = await tool.execute({ action: 'add', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('required');
+  });
+
+  it('creates a plan with dependencies', async () => {
+    const tool = todoManager(TODO_CWD + '-plan') as unknown as AnyTool;
+    const result = await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'Setup project', dependsOn: null, priority: null },
+        { task: 'Write code', dependsOn: [0], priority: null },
+        { task: 'Write tests', dependsOn: [0], priority: null },
+        { task: 'Review', dependsOn: [1, 2], priority: null },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('4 steps');
+    expect(result.items).toHaveLength(4);
+    // First step has no dependencies
+    expect(result.items[0].dependsOn).toBeUndefined();
+    // Review depends on Write code and Write tests
+    const review = result.items.find((i: { task: string }) => i.task === 'Review');
+    expect(review.dependsOn).toHaveLength(2);
+  });
+
+  it('detects circular dependencies in plan', async () => {
+    const tool = todoManager(TODO_CWD + '-cycle') as unknown as AnyTool;
+    const result = await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'A', dependsOn: [1], priority: null },
+        { task: 'B', dependsOn: [0], priority: null },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('circular');
+  });
+
+  it('next returns the first unblocked task', async () => {
+    const tool = todoManager(TODO_CWD + '-next') as unknown as AnyTool;
+    await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'First', dependsOn: null, priority: null },
+        { task: 'Second', dependsOn: [0], priority: null },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    const next1 = await tool.execute({ action: 'next', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    expect(next1.success).toBe(true);
+    expect(next1.nextTask.task).toBe('First');
+  });
+
+  it('blocks starting a task with incomplete dependencies', async () => {
+    const tool = todoManager(TODO_CWD + '-block') as unknown as AnyTool;
+    await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'First', dependsOn: null, priority: null },
+        { task: 'Second', dependsOn: [0], priority: null },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    // Get the IDs from the plan
+    const list = await tool.execute({ action: 'list', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    const secondId = list.items.find((i: { task: string }) => i.task === 'Second').id;
+
+    // Try to start the second task (should fail)
+    const result = await tool.execute({ action: 'update', task: null, id: secondId, status: 'in-progress', dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('blocked');
+  });
+
+  it('completing a dependency unblocks downstream tasks', async () => {
+    const tool = todoManager(TODO_CWD + '-unblock') as unknown as AnyTool;
+    await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'First', dependsOn: null, priority: null },
+        { task: 'Second', dependsOn: [0], priority: null },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    const list = await tool.execute({ action: 'list', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    const firstId = list.items.find((i: { task: string }) => i.task === 'First').id;
+    const secondId = list.items.find((i: { task: string }) => i.task === 'Second').id;
+
+    // Complete first task
+    await tool.execute({ action: 'update', task: null, id: firstId, status: 'done', dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+
+    // Now second task should be startable
+    const result = await tool.execute({ action: 'update', task: null, id: secondId, status: 'in-progress', dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    expect(result.success).toBe(true);
+  });
+
+  it('next respects priority ordering', async () => {
+    const tool = todoManager(TODO_CWD + '-prio') as unknown as AnyTool;
+    await tool.execute({
+      action: 'plan', task: null, id: null, status: null, dependsOn: null, priority: null,
+      steps: [
+        { task: 'Low priority', dependsOn: null, priority: 10 },
+        { task: 'High priority', dependsOn: null, priority: 1 },
+      ],
+    }, { toolCallId: 'test', messages: [] });
+
+    const next = await tool.execute({ action: 'next', task: null, id: null, status: null, dependsOn: null, priority: null, steps: null }, { toolCallId: 'test', messages: [] });
+    expect(next.nextTask.task).toBe('High priority');
   });
 });
 

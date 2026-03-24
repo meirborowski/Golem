@@ -119,6 +119,8 @@ export interface AgentTodoItem {
   id: number;
   task: string;
   status: 'pending' | 'in-progress' | 'done';
+  dependsOn?: number[];
+  blockedBy?: number[];
 }
 
 export interface AgentModeState {
