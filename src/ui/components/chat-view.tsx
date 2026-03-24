@@ -12,7 +12,7 @@ import { ApprovalPrompt } from './approval-prompt.js';
 import { AgentProgress } from './agent-progress.js';
 
 export function ChatView() {
-  const { config, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
+  const { config, registry, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
   const { messages, isStreaming, error, tokenUsage, sendMessage, cancelAgent, loadSession: loadIntoEngine } =
     useAgent();
   const [showWelcome, setShowWelcome] = useState(true);
@@ -45,7 +45,7 @@ export function ChatView() {
         agentDescription: agent.description,
       };
 
-      const result = handleCommand(input, context);
+      const result = handleCommand(input, context, registry);
 
       switch (result.type) {
         case 'message':

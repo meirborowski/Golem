@@ -10,7 +10,7 @@ import type { ModelMessage } from 'ai';
 const FLUSH_INTERVAL_MS = 32; // ~30fps — batch text deltas into ~32ms chunks
 
 export function useConversation() {
-  const { state, dispatch, config, activeModel, mcpManager, agent } = useAppContext();
+  const { state, dispatch, config, registry, activeModel, mcpManager, agent } = useAppContext();
 
   // Keep a stable ref to dispatch so the approval callback never goes stale
   const dispatchRef = useRef(dispatch);
@@ -41,7 +41,7 @@ export function useConversation() {
 
   // Lazily create the engine with approval-wrapped tools
   if (!engineRef.current) {
-    const builtinTools = createBuiltinTools(config, approvalCallback, agent.tools);
+    const builtinTools = createBuiltinTools(config, registry, approvalCallback, agent.tools);
     const mcpTools = mcpManager?.tools ?? {};
     const allTools = { ...builtinTools, ...mcpTools };
 
@@ -49,6 +49,7 @@ export function useConversation() {
     agent.toolMeta = getToolMeta(allTools);
 
     engineRef.current = new ConversationEngine(activeModel, allTools, config, agent);
+    engineRef.current.setRegistry(registry);
     if (mcpManager) {
       engineRef.current.setMcpToolDescriptions(mcpManager.toolDescriptions);
     }

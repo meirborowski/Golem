@@ -1,5 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { getProvider, listProviders, getDefaultModel } from './provider-registry.js';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { getProvider, listProviders, getDefaultModel, initProviders } from './provider-registry.js';
+import { ExtensionRegistry } from './extension-registry.js';
+import { builtinProvidersExtension } from '../extensions/builtin-providers.js';
+
+beforeAll(() => {
+  const registry = new ExtensionRegistry();
+  registry.register(builtinProvidersExtension);
+  initProviders(registry);
+});
 
 describe('provider-registry', () => {
   describe('listProviders', () => {

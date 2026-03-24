@@ -1,21 +1,16 @@
 import { streamText, stepCountIs } from 'ai';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { ModelMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
 import type { McpToolDescription } from './mcp-client.js';
 import type { AgentConfig } from '../agents/agent-types.js';
-import { detectProject } from '../utils/detect-project.js';
-import { loadMemoryForPrompt } from './memory.js';
+import type { ExtensionRegistry } from './extension-registry.js';
 import { logger } from '../utils/logger.js';
-
-const PROJECT_DOC_FILES = ['GOLEM.md', 'CLAUDE.md', 'README.md'];
-const MAX_DOC_CHARS = 8000; // Cap to avoid blowing the context window
 
 export class ConversationEngine {
   private messages: ModelMessage[] = [];
   private totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
   private mcpToolDescriptions: McpToolDescription[] = [];
+  private registry: ExtensionRegistry | null = null;
 
   constructor(
     private model: LanguageModel,
@@ -23,6 +18,10 @@ export class ConversationEngine {
     private readonly config: ResolvedConfig,
     private agent: AgentConfig,
   ) {}
+
+  setRegistry(registry: ExtensionRegistry): void {
+    this.registry = registry;
+  }
 
   setAgent(agent: AgentConfig): void {
     this.agent = agent;
@@ -212,35 +211,16 @@ export class ConversationEngine {
     return dropped;
   }
 
-  private loadProjectDoc(): { file: string; content: string } | null {
-    for (const filename of PROJECT_DOC_FILES) {
-      const filePath = join(this.config.cwd, filename);
-      if (existsSync(filePath)) {
-        try {
-          let content = readFileSync(filePath, 'utf-8').trim();
-          if (content.length > MAX_DOC_CHARS) {
-            content = content.slice(0, MAX_DOC_CHARS) + '\n\n[... truncated]';
-          }
-          logger.debug(`Loaded project doc: ${filename} (${content.length} chars)`);
-          return { file: filename, content };
-        } catch {
-          // Skip unreadable files
-        }
-      }
-    }
-    return null;
-  }
-
   private buildSystemPrompt(): string {
     const parts: string[] = [];
 
-    // Identity from agent config
+    // Agent identity (order 10)
     const identity = this.agent.sections['identity'];
     if (identity) {
       parts.push(identity);
     }
 
-    // Guidelines from agent config
+    // Agent guidelines (order 15)
     const guidelines = this.agent.sections['guidelines'];
     if (guidelines) {
       parts.push('');
@@ -248,40 +228,19 @@ export class ConversationEngine {
       parts.push(guidelines);
     }
 
-    // Dynamic: working directory
-    parts.push('');
-    parts.push('## Working Directory');
-    parts.push(`Current directory: ${this.config.cwd}`);
-
-    // Dynamic: project info
-    const project = detectProject(this.config.cwd);
-    if (project) {
-      parts.push('');
-      parts.push('## Project Info');
-      parts.push(`Type: ${project.type} (${project.language})`);
-      if (project.name) parts.push(`Name: ${project.name}`);
-      if (project.frameworks.length > 0) {
-        parts.push(`Frameworks: ${project.frameworks.join(', ')}`);
+    // Extension-contributed sections (sorted by order)
+    if (this.registry) {
+      const sections = this.registry.collectSystemPromptSections(this.config);
+      for (const section of sections) {
+        parts.push('');
+        if (section.title) {
+          parts.push(`## ${section.title}`);
+        }
+        parts.push(section.content);
       }
     }
 
-    // Dynamic: project docs
-    const doc = this.loadProjectDoc();
-    if (doc) {
-      parts.push('');
-      parts.push(`## Project Documentation (from ${doc.file})`);
-      parts.push(doc.content);
-    }
-
-    // Dynamic: persistent memory
-    const memoryContent = loadMemoryForPrompt(this.config.cwd);
-    if (memoryContent) {
-      parts.push('');
-      parts.push('## Remembered Context');
-      parts.push(memoryContent);
-    }
-
-    // Tool descriptions from agent's resolved tool metadata
+    // Tool descriptions from agent's resolved tool metadata (order ~60)
     const toolMetaEntries = Object.entries(this.agent.toolMeta);
     if (toolMetaEntries.length > 0) {
       parts.push('');
@@ -294,7 +253,7 @@ export class ConversationEngine {
       }
     }
 
-    // Dynamic: MCP tool descriptions
+    // MCP tool descriptions (order ~65)
     if (this.mcpToolDescriptions.length > 0) {
       parts.push('');
       parts.push('## MCP Server Tools');
@@ -312,7 +271,7 @@ export class ConversationEngine {
       }
     }
 
-    // Behavior from agent config
+    // Agent behavior (order ~80)
     const behavior = this.agent.sections['behavior'];
     if (behavior) {
       parts.push('');

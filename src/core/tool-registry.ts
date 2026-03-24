@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles, agentDone } from '../tools/index.js';
-import type { ResolvedConfig, ApprovalCallback, ApprovalConfig, ApprovalMode } from './types.js';
+import { isGitReadOnly } from '../tools/index.js';
+import type { ResolvedConfig, ApprovalCallback } from './types.js';
+import type { ToolMiddleware } from './middleware.js';
+import { applyMiddleware } from './middleware.js';
+import { createApprovalMiddleware } from './middlewares/approval.js';
+import type { ExtensionRegistry } from './extension-registry.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolSet = Record<string, any>;
@@ -31,7 +35,7 @@ export function getToolMeta(tools: ToolSet): Record<string, ToolMeta> {
  * JSON schema's `required` array (satisfying OpenAI) while still handling
  * providers like Gemini that omit optional parameters entirely.
  */
-function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[string] {
+export function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[string] {
   const schema = toolDef.inputSchema;
   if (!(schema instanceof z.ZodObject)) return toolDef;
 
@@ -70,7 +74,7 @@ function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[string] {
  * Built-in conditional check functions for tools that support "conditional" approval mode.
  * Returns true if the specific invocation needs approval.
  */
-const CONDITIONAL_CHECKS: Record<string, (args: unknown) => boolean> = {
+export const CONDITIONAL_CHECKS: Record<string, (args: unknown) => boolean> = {
   git: (args: unknown) => {
     const { subcommand, args: gitArgs } = args as { subcommand: string; args: string | null };
     return !isGitReadOnly(subcommand, gitArgs);
@@ -78,88 +82,16 @@ const CONDITIONAL_CHECKS: Record<string, (args: unknown) => boolean> = {
 };
 
 /**
- * Resolve the approval mode for a tool based on config.
- * Config entries take priority; unspecified tools default to 'never'.
+ * Create tools from the extension registry, filter by agent, normalize, and apply middleware.
  */
-export function resolveToolApproval(toolName: string, approvalConfig: ApprovalConfig): ApprovalMode {
-  return approvalConfig.tools?.[toolName]?.approval ?? 'never';
-}
-
-export function wrapWithApproval(
-  originalTool: ToolSet[string],
-  toolName: string,
-  onApprovalNeeded: ApprovalCallback,
-): ToolSet[string] {
-  return {
-    ...originalTool,
-    execute: async (args: unknown, context: unknown) => {
-      const ctx = context as { toolCallId?: string } | undefined;
-      const toolCallId = ctx?.toolCallId ?? `${toolName}-${Date.now()}`;
-
-      const approved = await onApprovalNeeded(toolName, toolCallId, args);
-      if (!approved) {
-        return { success: false, error: 'Command denied by user' };
-      }
-
-      return originalTool.execute(args, context);
-    },
-  };
-}
-
-function wrapWithConditionalApproval(
-  originalTool: ToolSet[string],
-  toolName: string,
-  needsApproval: (args: unknown) => boolean,
-  onApprovalNeeded: ApprovalCallback,
-): ToolSet[string] {
-  return {
-    ...originalTool,
-    execute: async (args: unknown, context: unknown) => {
-      if (needsApproval(args)) {
-        const ctx = context as { toolCallId?: string } | undefined;
-        const toolCallId = ctx?.toolCallId ?? `${toolName}-${Date.now()}`;
-
-        const approved = await onApprovalNeeded(toolName, toolCallId, args);
-        if (!approved) {
-          return { success: false, error: 'Command denied by user' };
-        }
-      }
-
-      return originalTool.execute(args, context);
-    },
-  };
-}
-
 export function createBuiltinTools(
   config: ResolvedConfig,
+  registry: ExtensionRegistry,
   onApprovalNeeded?: ApprovalCallback,
   toolNames?: string[],
 ): ToolSet {
-  const cwd = config.cwd;
-  const searxngBaseUrl =
-    config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
-
-  const rawTools: ToolSet = {
-    readFile: readFile(cwd),
-    writeFile: writeFile(cwd),
-    editFile: editFile(cwd),
-    listFiles: listFiles(cwd),
-    searchFiles: searchFiles(cwd),
-    bash: bash(cwd),
-    git: git(cwd),
-    think: think(),
-    fetchUrl: fetchUrl(),
-    patch: patch(cwd),
-    todoManager: todoManager(cwd),
-    memory: memory(cwd),
-    multiEdit: multiEdit(cwd),
-    codeOutline: codeOutline(cwd),
-    rename: rename(cwd),
-    directoryTree: directoryTree(cwd),
-    webSearch: webSearch(searxngBaseUrl),
-    diffFiles: diffFiles(cwd),
-    agentDone: agentDone(),
-  };
+  // Collect tools from all registered extensions
+  const rawTools = registry.collectTools(config.cwd, config);
 
   // Filter to agent's allowed tools, then normalize
   const allowedNames = toolNames ? new Set(toolNames) : null;
@@ -169,20 +101,19 @@ export function createBuiltinTools(
     allTools[name] = normalizeNullableParams(toolDef);
   }
 
+  // Collect middleware from extensions + add approval middleware
+  const middlewares: ToolMiddleware[] = [];
+
   if (onApprovalNeeded) {
+    middlewares.push(createApprovalMiddleware(config.approval, onApprovalNeeded, CONDITIONAL_CHECKS));
+  }
+
+  middlewares.push(...registry.collectMiddleware(config));
+
+  // Apply middleware pipeline to each tool
+  if (middlewares.length > 0) {
     for (const name of Object.keys(allTools)) {
-      const mode = resolveToolApproval(name, config.approval);
-      if (mode === 'always') {
-        allTools[name] = wrapWithApproval(allTools[name], name, onApprovalNeeded);
-      } else if (mode === 'conditional') {
-        const check = CONDITIONAL_CHECKS[name];
-        if (check) {
-          allTools[name] = wrapWithConditionalApproval(allTools[name], name, check, onApprovalNeeded);
-        } else {
-          // No conditional check registered — fall back to always
-          allTools[name] = wrapWithApproval(allTools[name], name, onApprovalNeeded);
-        }
-      }
+      allTools[name] = applyMiddleware(allTools[name], name, config, middlewares);
     }
   }
 

@@ -1,8 +1,10 @@
 import { createMCPClient, type MCPClient } from '@ai-sdk/mcp';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
 import type { ToolSet } from './tool-registry.js';
-import { wrapWithApproval } from './tool-registry.js';
-import type { McpServerConfig, ApprovalCallback, ApprovalConfig } from './types.js';
+import type { McpServerConfig, ApprovalCallback, ApprovalConfig, ResolvedConfig } from './types.js';
+import type { ToolMiddleware } from './middleware.js';
+import { applyMiddleware } from './middleware.js';
+import { createApprovalMiddleware } from './middlewares/approval.js';
 import { logger } from '../utils/logger.js';
 
 export interface McpToolDescription {
@@ -42,6 +44,7 @@ export async function createMcpManager(
   servers: Record<string, McpServerConfig>,
   onApprovalNeeded?: ApprovalCallback,
   approvalConfig?: ApprovalConfig,
+  config?: ResolvedConfig,
 ): Promise<McpManager> {
   const clients: MCPClient[] = [];
   const allTools: ToolSet = {};
@@ -86,13 +89,22 @@ export async function createMcpManager(
 
         let wrappedTool = { ...toolDef };
 
-        // Resolve approval mode: per-tool override > mcpDefault > 'always'
-        const toolRule = approvalConfig?.tools?.[namespacedName]?.approval;
+        // Build MCP-specific approval config: per-tool override > mcpDefault > 'always'
         const mcpDefault = approvalConfig?.mcpDefault ?? 'always';
-        const approvalMode = toolRule ?? mcpDefault;
+        const toolRule = approvalConfig?.tools?.[namespacedName]?.approval ?? mcpDefault;
+        const mcpApprovalConfig: ApprovalConfig = {
+          ...approvalConfig,
+          tools: { ...approvalConfig?.tools, [namespacedName]: { approval: toolRule } },
+        };
 
-        if (onApprovalNeeded && approvalMode !== 'never') {
-          wrappedTool = wrapWithApproval(wrappedTool, namespacedName, onApprovalNeeded);
+        // Apply middleware pipeline
+        const middlewares: ToolMiddleware[] = [];
+        if (onApprovalNeeded) {
+          middlewares.push(createApprovalMiddleware(mcpApprovalConfig, onApprovalNeeded, {}));
+        }
+        if (middlewares.length > 0) {
+          const resolvedConfig = config ?? ({ approval: mcpApprovalConfig } as ResolvedConfig);
+          wrappedTool = applyMiddleware(wrappedTool, namespacedName, resolvedConfig, middlewares);
         }
 
         allTools[namespacedName] = wrappedTool;

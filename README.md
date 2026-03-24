@@ -8,9 +8,9 @@ Golem is a provider-agnostic terminal AI coding assistant. It can chat with mult
 ## Features
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
+- **Extensible architecture**: Built-in providers, tools, commands, and prompt sections are loaded through an extension registry
 - **Built-in tools**: Read, write, edit files; glob and regex search; shell commands; git; memory; todo tracking; multi-edit; patching; renaming; directory trees; code outline; diffing; web search; fetch; and more
 - **Agent mode**: Multi-turn task execution with automatic continuation, tool chaining, and `agentDone` completion
-- **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks and streaming responses
 - **Session persistence**: Save and load conversations across sessions
 - **Context management**: Automatic truncation when conversations exceed the context window
 - **Project-aware**: Reads GOLEM.md/CLAUDE.md/README.md into the system prompt and includes remembered context
@@ -131,8 +131,9 @@ npm install
 
 ```text
 src/
-  agents/        Agent loader, runner, and configs
-  core/          Config, conversation engine, providers, sessions, types
+  core/          Config, conversation engine, providers, sessions, extensions, middleware, types
+  extensions/    Built-in extensions for commands, providers, tools, and prompt sections
+  tools/         Built-in tools
   tools/         Built-in tools and tool registry
   ui/            Ink components, hooks, context
   utils/         File I/O, logging, project detection

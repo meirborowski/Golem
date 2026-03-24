@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { AppContextProvider } from './ui/context/app-context.js';
 import { ChatView } from './ui/components/chat-view.js';
-import { resolveModel, getDefaultModel, getProvider } from './core/provider-registry.js';
+import { resolveModel, getDefaultModel, getProvider, initProviders } from './core/provider-registry.js';
 import { createMcpManager, type McpManager } from './core/mcp-client.js';
 import { setActiveMcpManager } from './core/mcp-lifecycle.js';
+import { ExtensionRegistry } from './core/extension-registry.js';
+import { builtinExtensions } from './extensions/index.js';
 import { loadAgent } from './agents/agent-loader.js';
 import type { AgentConfig } from './agents/agent-types.js';
 import { logger } from './utils/logger.js';
@@ -14,6 +16,15 @@ interface AppProps {
 }
 
 export function App({ config }: AppProps) {
+  // Create and initialize extension registry
+  const registry = useMemo(() => {
+    const reg = new ExtensionRegistry();
+    reg.registerAll(builtinExtensions);
+    // Initialize provider registry from extensions
+    initProviders(reg);
+    return reg;
+  }, []);
+
   const [model, setModel] = useState(() => resolveModel(config));
   const [modelName, setModelName] = useState(
     () => config.model || getDefaultModel(config.provider),
@@ -49,7 +60,7 @@ export function App({ config }: AppProps) {
     let cancelled = false;
     logger.info(`Connecting to ${serverCount} MCP server(s)...`);
 
-    createMcpManager(config.mcpServers, undefined, config.approval).then((manager) => {
+    createMcpManager(config.mcpServers, undefined, config.approval, config).then((manager) => {
       if (cancelled) {
         manager.close();
         return;
@@ -90,6 +101,7 @@ export function App({ config }: AppProps) {
   return (
     <AppContextProvider
       config={config}
+      registry={registry}
       activeModel={model}
       activeModelName={modelName}
       activeProvider={provider}

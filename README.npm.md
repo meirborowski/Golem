@@ -5,6 +5,7 @@ A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and ed
 ## Features
 
 - **Multi-provider**: Anthropic Claude, OpenAI GPT, Google Gemini, and local Ollama models
+- **Extensible architecture**: Built-in providers, tools, commands, and prompt sections are loaded through an extension registry
 - **Built-in tools**: Read, write, edit files; glob and regex search; shell commands; git; memory; todo tracking; multi-edit; patching; renaming; directory trees; code outline; diffing; web search; fetch; and more
 - **Rich terminal UI**: Markdown rendering with syntax-highlighted code blocks and streaming responses
 - **Session persistence**: Save and load conversations across sessions

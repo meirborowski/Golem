@@ -2,101 +2,84 @@
 
 ## Project Overview
 
-Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It supports multiple LLM providers (Anthropic, OpenAI, Google, Ollama) through the Vercel AI SDK and renders a rich terminal UI using Ink (React for terminals).
+Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It supports multiple LLM providers through the Vercel AI SDK and renders a rich terminal UI using Ink.
 
-**Key values**: Local-first/privacy, extensibility, simplicity.
+**Key values**: local-first privacy, extensibility, simplicity, and explicit behavior.
 
-## Architecture
+## Current Architecture
 
-Three-layer design with strict separation of concerns:
+Golem is organized around a clear runtime pipeline:
 
 ```text
-src/agents/    Agent loader/runner/types. Orchestrates multi-turn task execution.
-src/core/      Pure logic. No React. Independently testable.
-src/ui/        Ink components + hooks. Thin rendering layer.
-src/tools/     Self-contained tool() definitions with Zod schemas.
-src/utils/     Shared helpers (file I/O, logging, project detection).
+src/index.tsx          CLI entrypoint and app bootstrap
+src/app.tsx            App wiring, provider/tool/extension initialization
+src/agents/            Agent loading and multi-turn execution
+src/core/              Core business logic, config, sessions, registry, middleware
+src/ui/                Ink components, hooks, and React context
+src/tools/             Built-in tool() implementations
+src/extensions/        Extension packages that add tools, commands, providers, prompts
+src/utils/              Shared helpers for files, logging, and project detection
 ```
+
+### Core Runtime Flow
+
+1. The CLI resolves config and initializes logging in `src/index.tsx`.
+2. `App` wires together the selected provider, tool registry, MCP support, and extension registry.
+3. `ConversationEngine` manages message history, prompt construction, memory loading, and `streamText` calls.
+4. `runAgent` coordinates multi-turn tool use until completion, cancellation, or `agentDone`.
+5. React/Ink UI stays thin: it renders state, handles input, and delegates behavior to core modules.
 
 ### Core Components
 
-- **Agent Runner** (`src/agents/agent-runner.ts`): Coordinates multi-turn agent execution, continues until `agentDone`, max turns, cancellation, or repeated errors. Collects tool calls and final output.
-- **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (`GOLEM.md`/`CLAUDE.md`/`README.md`) into the system prompt, and includes remembered context from project/global memory.
-- **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
-- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) and conditional git operations with a callback gate.
-- **Config** (`src/core/config.ts`): Layered resolution: defaults < global file < project file < env vars < CLI args.
-- **Session** (`src/core/session.ts`): Saves/loads/lists conversation sessions as JSON files in `~/.config/golem/sessions/`.
+- **Agent Loader / Runner** (`src/agents/`): Loads agent configs from markdown files and runs multi-turn execution.
+- **ConversationEngine** (`src/core/conversation.ts`): Owns message history, truncation, system prompt assembly, memory injection, and model streaming.
+- **Provider Registry** (`src/core/provider-registry.ts`): Resolves configured providers/models and initializes provider extensions.
+- **Tool Registry** (`src/core/tool-registry.ts`): Builds the AI SDK toolset, applies approval gates, and wraps middleware where needed.
+- **Extension Registry** (`src/core/extension-registry.ts`): Collects tools, providers, commands, and system prompt sections from extensions.
+- **Config** (`src/core/config.ts`): Resolves settings from defaults, global config, project config, env vars, and CLI args.
+- **Session** (`src/core/session.ts`): Saves, loads, lists, and exports sessions under the user config directory.
+- **MCP Integration** (`src/core/mcp-client.ts`): Connects external MCP servers and exposes their tools through the same approval flow.
+
+## Working Style and Conventions
+
+- Prefer small, focused changes that preserve the existing architecture.
+- Keep pure logic in `src/core/` and `src/agents/`; keep React/Ink concerns in `src/ui/`.
+- Use named exports only. Do not add default exports.
+- Keep imports ESM-compatible with `.js` suffixes in TypeScript source.
+- Follow strict TypeScript patterns; prefer `unknown` over `any` unless a test needs a narrow cast.
+- Avoid stdout logging. Use the shared logger and let Ink own terminal output.
+- Tools should return `{ success: false, error: string }` instead of throwing for expected failures.
+- When changing behavior, update or add focused tests alongside the code.
+- Read relevant files before editing, and verify edits before finishing.
 
 ## State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions include the chat stream lifecycle and approval flow: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
+The app uses a single `useReducer` at the top level, shared through React context. The reducer drives:
+
+- message lifecycle updates
+- streaming state
+- tool call tracking
+- approval prompts
+- session loading and clearing
 
 ## Rendering Performance
 
-- Completed messages use Ink's `<Static>` — rendered once, never redrawn.
-- Only the active streaming message + input bar redraws during streaming.
-- Text deltas are batched at ~30fps to reduce re-renders.
-- `Message` component is wrapped in `React.memo`.
-- Markdown rendering is deferred until streaming completes (plain text during streaming).
+- Completed messages use Ink's `<Static>` so they do not rerender.
+- Only the active streaming message and input area redraw while streaming.
+- Text deltas are batched to reduce re-renders.
+- Markdown rendering is deferred until streaming finishes.
 
 ## Code Conventions
 
 - **TypeScript strict mode**. Avoid `any`; prefer `unknown` and narrow deliberately. A few test-only casts are acceptable when mocking external SDK types.
 - **Named exports only** — no default exports.
 - **File naming**: kebab-case. React = `.tsx`, everything else = `.ts`.
-- **Imports**: Use `type` keyword for type-only imports. Always use `.js` extension in import paths (ESM requirement).
-- **Tools**: One file per tool in `src/tools/`. Export as named constant (factory function taking `cwd`).
-- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters (Anthropic API requires all properties in `required`). Handle defaults in `execute()`.
+- **Imports**: Use `type` keyword for type-only imports. Always use `.js` extension in import paths.
+- **Tools**: One file per tool in `src/tools/`. Export as named constant or factory taking `cwd`.
+- **Tool schemas**: Use `z.union([z.type(), z.null()])` for optional parameters. Handle defaults in `execute()`.
 - **Errors**: Tools return `{ success: false, error: string }` — never throw.
-- **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout (Ink owns the terminal).
-- **Testing**: Prefer focused unit tests for core logic, agents, and tools. Mock external SDK boundaries instead of calling live providers.
-
-## How to Add a New Tool
-
-1. Create `src/tools/my-tool.ts`:
-
-```typescript
-import { tool } from 'ai';
-import { z } from 'zod';
-
-export const myTool = (cwd: string) =>
-  tool({
-    description: 'What this tool does',
-    parameters: z.object({
-      param1: z.string().describe('Description'),
-      optionalParam: z.union([z.number(), z.null()]).describe('Optional. Null defaults to 10.'),
-    }),
-    execute: async ({ param1, optionalParam: rawOpt }) => {
-      const optionalParam = rawOpt ?? 10;
-      try {
-        return { success: true, result: '...' };
-      } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-  });
-```
-
-2. Add export to `src/tools/index.ts`
-3. Add to the tool map in `src/core/tool-registry.ts`
-4. Add tests in `src/tools/tools.test.ts`
-
-## How to Add a New Provider
-
-1. Install `@ai-sdk/{provider}` or community provider package
-2. Add entry in `src/core/provider-registry.ts`:
-
-```typescript
-providers.set('myProvider', {
-  name: 'myProvider',
-  defaultModel: 'model-name',
-  envKeyName: 'MY_PROVIDER_API_KEY',
-  createModel: (modelId, options) => {
-    const provider = createMyProvider({ apiKey: options?.apiKey });
-    return provider(modelId);
-  },
-});
-```
+- **Logging**: Use `logger` from `src/utils/logger.ts`. Never write to stdout.
+- **Testing**: Prefer focused unit tests for core logic, agents, tools, and session/config behavior.
 
 ## Built-in Tools
 
@@ -133,6 +116,7 @@ providers.set('myProvider', {
 | `/save` | Save current session |
 | `/load [id]` | Load a saved session (latest if no id) |
 | `/history` | List saved sessions |
+| `/export` | Export the current session to Markdown |
 | `/exit`, `/quit` | Exit Golem |
 
 ## Agent Rules
@@ -153,21 +137,21 @@ When acting as Golem in this repository:
 ## Build & Run
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Run in dev mode (tsx)
-npm run build        # Compile TypeScript -> dist/
-npm start            # Run compiled version
-npm test             # Run Vitest tests
-npm run test:watch   # Run Vitest in watch mode
-npm run typecheck    # Type-check without emitting
-npm run lint         # Check formatting with Prettier
-npm run format       # Format with Prettier
+npm install        # Install dependencies
+npm run dev         # Run in dev mode (tsx)
+npm run build      # Compile TypeScript -> dist/
+npm start          # Run compiled version
+npm test            # Run Vitest tests
+npm run test:watch  # Run Vitest in watch mode
+npm run typecheck   # Type-check without emitting
+npm run lint        # Check formatting with Prettier
+npm run format      # Format with Prettier
 ```
 
 ## CLI Usage
 
 ```bash
-golem                               # Default (Anthropic Claude)
+golem                               # Default provider/model from config
 golem --provider openai -m gpt-4o   # Use OpenAI
 golem --provider ollama -m llama3.1  # Use local Ollama
 golem --debug                       # Enable debug logging
@@ -197,10 +181,10 @@ golem --debug                       # Enable debug logging
 ## Testing
 
 - **Framework**: Vitest
-- **Tools**: Test by calling `execute()` directly — they're pure functions
+- **Tools**: Test by calling `execute()` directly
 - **ConversationEngine**: Test truncation, history, stream events, and system prompt building
 - **Agent runner**: Test multi-turn continuation, cancellation, and `agentDone` behavior
-- **Session**: Test save/load/list with temp directories
+- **Session**: Test save/load/list/export with temp directories
 - **Run**: `npm test`
 
 ## Dependencies

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer } from 'react';
 import type { AppState, AppAction, ResolvedConfig, LanguageModel, AgentTodoItem } from '../../core/types.js';
 import type { McpManager } from '../../core/mcp-client.js';
 import type { AgentConfig } from '../../agents/agent-types.js';
+import type { ExtensionRegistry } from '../../core/extension-registry.js';
 
 const initialState: AppState = {
   messages: [],
@@ -205,6 +206,7 @@ interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   config: ResolvedConfig;
+  registry: ExtensionRegistry;
   activeModel: LanguageModel;
   activeModelName: string;
   activeProvider: string;
@@ -219,6 +221,7 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 export function AppContextProvider({
   children,
   config,
+  registry,
   activeModel,
   activeModelName,
   activeProvider,
@@ -229,6 +232,7 @@ export function AppContextProvider({
 }: {
   children: React.ReactNode;
   config: ResolvedConfig;
+  registry: ExtensionRegistry;
   activeModel: LanguageModel;
   activeModelName: string;
   activeProvider: string;
@@ -241,7 +245,7 @@ export function AppContextProvider({
 
   return (
     <AppContext.Provider
-      value={{ state, dispatch, config, activeModel, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent }}
+      value={{ state, dispatch, config, registry, activeModel, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent }}
     >
       {children}
     </AppContext.Provider>

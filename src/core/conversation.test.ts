@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConversationEngine } from './conversation.js';
+import { ExtensionRegistry } from './extension-registry.js';
+import { builtinPromptSectionsExtension } from '../extensions/builtin-prompt-sections.js';
 import type { ResolvedConfig, TokenUsage } from './types.js';
 import type { AgentConfig } from '../agents/agent-types.js';
 
@@ -226,6 +228,9 @@ describe('ConversationEngine', () => {
 
       const promptConfig: ResolvedConfig = { ...config, cwd };
       const promptEngine = new ConversationEngine(fakeModel as never, fakeTools, promptConfig, testAgent);
+      const promptRegistry = new ExtensionRegistry();
+      promptRegistry.register(builtinPromptSectionsExtension);
+      promptEngine.setRegistry(promptRegistry);
 
       streamTextMock.mockReturnValue({
         fullStream: (async function* () {
