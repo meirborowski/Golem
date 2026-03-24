@@ -15,6 +15,7 @@
     "dist/**/*.d.ts",
     "dist/agents/configs/*.md",
     "!dist/**/*.test.*",
+    "config/**/*.json",
     "README.md",
     "README.npm.md",
     "LICENSE",

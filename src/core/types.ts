@@ -2,6 +2,19 @@ import type { ModelMessage, LanguageModel } from 'ai';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
+export type ApprovalMode = 'always' | 'never' | 'conditional';
+
+export interface ToolApprovalRule {
+  approval: ApprovalMode;
+}
+
+export interface ApprovalConfig {
+  /** Per-tool approval rules. Key is tool name (e.g., "bash", "git", "myMcpServer_toolName"). */
+  tools?: Record<string, ToolApprovalRule>;
+  /** Default approval mode for MCP tools. Defaults to 'always'. */
+  mcpDefault?: 'always' | 'never';
+}
+
 export interface ProviderConfig {
   apiKey?: string;
   baseUrl?: string;
@@ -32,6 +45,7 @@ export interface GolemConfig {
   agent?: string;
   providers?: Record<string, ProviderConfig>;
   mcpServers?: Record<string, McpServerConfig>;
+  approval?: ApprovalConfig;
 }
 
 export interface ResolvedConfig {
@@ -46,6 +60,7 @@ export interface ResolvedConfig {
   agent?: string;
   providers: Record<string, ProviderConfig>;
   mcpServers: Record<string, McpServerConfig>;
+  approval: ApprovalConfig;
 }
 
 // ── Provider ────────────────────────────────────────────────────────────────

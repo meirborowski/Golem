@@ -2,7 +2,7 @@ import { createMCPClient, type MCPClient } from '@ai-sdk/mcp';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
 import type { ToolSet } from './tool-registry.js';
 import { wrapWithApproval } from './tool-registry.js';
-import type { McpServerConfig, ApprovalCallback } from './types.js';
+import type { McpServerConfig, ApprovalCallback, ApprovalConfig } from './types.js';
 import { logger } from '../utils/logger.js';
 
 export interface McpToolDescription {
@@ -41,6 +41,7 @@ function resolveStdioCommand(command: string, args?: string[]): { command: strin
 export async function createMcpManager(
   servers: Record<string, McpServerConfig>,
   onApprovalNeeded?: ApprovalCallback,
+  approvalConfig?: ApprovalConfig,
 ): Promise<McpManager> {
   const clients: MCPClient[] = [];
   const allTools: ToolSet = {};
@@ -85,8 +86,12 @@ export async function createMcpManager(
 
         let wrappedTool = { ...toolDef };
 
-        // Wrap with approval — all MCP tools require user confirmation
-        if (onApprovalNeeded) {
+        // Resolve approval mode: per-tool override > mcpDefault > 'always'
+        const toolRule = approvalConfig?.tools?.[namespacedName]?.approval;
+        const mcpDefault = approvalConfig?.mcpDefault ?? 'always';
+        const approvalMode = toolRule ?? mcpDefault;
+
+        if (onApprovalNeeded && approvalMode !== 'never') {
           wrappedTool = wrapWithApproval(wrappedTool, namespacedName, onApprovalNeeded);
         }
 

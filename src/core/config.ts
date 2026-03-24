@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import type { GolemConfig, ResolvedConfig } from './types.js';
 
@@ -13,7 +14,17 @@ const DEFAULTS: ResolvedConfig = {
   cwd: process.cwd(),
   providers: {},
   mcpServers: {},
+  approval: {},
 };
+
+/** Load the bundled system config from config/system.json at the package root. */
+function loadSystemConfig(): Partial<GolemConfig> | null {
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  // In dev: src/core/ → ../../config/system.json
+  // In dist: dist/core/ → ../../config/system.json
+  const systemPath = join(thisDir, '..', '..', 'config', 'system.json');
+  return loadJsonFile(systemPath);
+}
 
 const CONFIG_FILENAME = 'config.json';
 const PROJECT_DIR = '.golem';
@@ -79,24 +90,30 @@ export function resolveConfig(cliArgs: CliArgs = {}): ResolvedConfig {
   // Layer 1: Defaults
   let config: ResolvedConfig = { ...DEFAULTS };
 
-  // Layer 2: Global config file
+  // Layer 2: Bundled system config (lowest priority config file)
+  const systemConfig = loadSystemConfig();
+  if (systemConfig) {
+    config = mergeConfig(config, systemConfig);
+  }
+
+  // Layer 3: Global config file
   const globalPath = findGlobalConfigPath();
   const globalConfig = loadJsonFile(globalPath);
   if (globalConfig) {
     config = mergeConfig(config, globalConfig);
   }
 
-  // Layer 3: Project config (walk up from cwd)
+  // Layer 4: Project config (walk up from cwd)
   const projectConfig = findProjectConfig(process.cwd());
   if (projectConfig) {
     config = mergeConfig(config, projectConfig);
   }
 
-  // Layer 4: Environment variables
+  // Layer 5: Environment variables
   const envConfig = loadEnvConfig();
   config = mergeConfig(config, envConfig);
 
-  // Layer 5: CLI arguments (highest priority)
+  // Layer 6: CLI arguments (highest priority)
   if (cliArgs.provider) config.provider = cliArgs.provider;
   if (cliArgs.model) config.model = cliArgs.model;
   if (cliArgs.apiKey) config.apiKey = cliArgs.apiKey;
@@ -126,6 +143,14 @@ function mergeConfig(base: ResolvedConfig, override: Partial<GolemConfig>): Reso
     mcpServers: {
       ...base.mcpServers,
       ...(override.mcpServers ?? {}),
+    },
+    approval: {
+      ...base.approval,
+      ...(override.approval ?? {}),
+      tools: {
+        ...base.approval?.tools,
+        ...(override.approval?.tools ?? {}),
+      },
     },
   };
 }

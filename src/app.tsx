@@ -49,7 +49,7 @@ export function App({ config }: AppProps) {
     let cancelled = false;
     logger.info(`Connecting to ${serverCount} MCP server(s)...`);
 
-    createMcpManager(config.mcpServers).then((manager) => {
+    createMcpManager(config.mcpServers, undefined, config.approval).then((manager) => {
       if (cancelled) {
         manager.close();
         return;

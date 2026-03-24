@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { readFile, writeFile, editFile, listFiles, searchFiles, bash, git, isGitReadOnly, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles, agentDone } from '../tools/index.js';
-import type { ResolvedConfig, ApprovalCallback } from './types.js';
+import type { ResolvedConfig, ApprovalCallback, ApprovalConfig, ApprovalMode } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolSet = Record<string, any>;
@@ -66,19 +66,24 @@ function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[string] {
   return { ...toolDef, inputSchema: wrapped };
 }
 
-/** Tools that always require approval for every invocation. */
-const TOOLS_REQUIRING_APPROVAL = new Set(['bash']);
-
 /**
- * Tools that require approval only for certain arguments.
- * Each entry maps a tool name to a function that returns true if approval is needed.
+ * Built-in conditional check functions for tools that support "conditional" approval mode.
+ * Returns true if the specific invocation needs approval.
  */
-const CONDITIONAL_APPROVAL: Record<string, (args: unknown) => boolean> = {
+const CONDITIONAL_CHECKS: Record<string, (args: unknown) => boolean> = {
   git: (args: unknown) => {
     const { subcommand, args: gitArgs } = args as { subcommand: string; args: string | null };
     return !isGitReadOnly(subcommand, gitArgs);
   },
 };
+
+/**
+ * Resolve the approval mode for a tool based on config.
+ * Config entries take priority; unspecified tools default to 'never'.
+ */
+export function resolveToolApproval(toolName: string, approvalConfig: ApprovalConfig): ApprovalMode {
+  return approvalConfig.tools?.[toolName]?.approval ?? 'never';
+}
 
 export function wrapWithApproval(
   originalTool: ToolSet[string],
@@ -165,15 +170,18 @@ export function createBuiltinTools(
   }
 
   if (onApprovalNeeded) {
-    for (const name of TOOLS_REQUIRING_APPROVAL) {
-      if (allTools[name]) {
+    for (const name of Object.keys(allTools)) {
+      const mode = resolveToolApproval(name, config.approval);
+      if (mode === 'always') {
         allTools[name] = wrapWithApproval(allTools[name], name, onApprovalNeeded);
-      }
-    }
-
-    for (const [name, check] of Object.entries(CONDITIONAL_APPROVAL)) {
-      if (allTools[name]) {
-        allTools[name] = wrapWithConditionalApproval(allTools[name], name, check, onApprovalNeeded);
+      } else if (mode === 'conditional') {
+        const check = CONDITIONAL_CHECKS[name];
+        if (check) {
+          allTools[name] = wrapWithConditionalApproval(allTools[name], name, check, onApprovalNeeded);
+        } else {
+          // No conditional check registered — fall back to always
+          allTools[name] = wrapWithApproval(allTools[name], name, onApprovalNeeded);
+        }
       }
     }
   }
