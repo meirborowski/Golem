@@ -21,7 +21,7 @@ src/utils/     Shared helpers (file I/O, logging, project detection).
 ### Core Components
 
 - **Agent Runner** (`src/agents/agent-runner.ts`): Coordinates multi-turn agent execution, continues until `agentDone`, max turns, cancellation, or repeated errors. Collects tool calls and final output.
-- **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt, and includes remembered context from project/global memory.
+- **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (`GOLEM.md`/`CLAUDE.md`/`README.md`) into the system prompt, and includes remembered context from project/global memory.
 - **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
 - **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) and conditional git operations with a callback gate.
 - **Config** (`src/core/config.ts`): Layered resolution: defaults < global file < project file < env vars < CLI args.
@@ -156,9 +156,11 @@ When acting as Golem in this repository:
 npm install          # Install dependencies
 npm run dev          # Run in dev mode (tsx)
 npm run build        # Compile TypeScript -> dist/
-npm run start        # Run compiled version
-npm test             # Run vitest
+npm start            # Run compiled version
+npm test             # Run Vitest tests
+npm run test:watch   # Run Vitest in watch mode
 npm run typecheck    # Type-check without emitting
+npm run lint         # Check formatting with Prettier
 npm run format       # Format with Prettier
 ```
 
@@ -209,10 +211,13 @@ golem --debug                       # Enable debug logging
 | `@ai-sdk/anthropic` | Anthropic provider |
 | `@ai-sdk/openai` | OpenAI provider |
 | `@ai-sdk/google` | Google Gemini provider |
+| `@ai-sdk/mcp` | MCP integration |
+| `@modelcontextprotocol/sdk` | MCP protocol SDK |
 | `ollama-ai-provider` | Ollama local model provider |
 | `zod` | Schema validation for tool inputs |
 | `ink` | React-based terminal UI |
 | `ink-spinner` | Loading spinner |
+| `ink-text-input` | Text input component |
 | `cli-highlight` | Syntax highlighting in code blocks |
 | `chalk` | Terminal colors |
 | `meow` | CLI argument parsing |

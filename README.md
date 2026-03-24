@@ -1,6 +1,6 @@
 # Golem CLI
 
-A provider-agnostic terminal AI coding assistant. Chat with any LLM, read and edit files, search codebases, and run commands — all from your terminal.
+Golem is a provider-agnostic terminal AI coding assistant. It can chat with multiple LLMs, read and edit files, search codebases, run commands, and manage multi-turn agent tasks from your terminal.
 
 [![npm version](https://img.shields.io/npm/v/golem-cli)](https://www.npmjs.com/package/golem-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -59,10 +59,10 @@ golem --debug                                  # Enable debug logging
 
 ## Configuration
 
-Golem uses layered configuration (later overrides earlier):
+Golem uses layered configuration, with later sources overriding earlier ones:
 
 1. Built-in defaults
-2. Global config: `~/.config/golem/config.json`
+2. Global config: `~/.config/golem/config.json` (or `%APPDATA%\\golem\\config.json` on Windows)
 3. Project config: `.golem/config.json`
 4. Environment variables: `GOLEM_PROVIDER`, `GOLEM_MODEL`, provider API keys
 5. CLI flags: `--provider`, `--model`, `--debug`
@@ -86,27 +86,27 @@ Example config:
 
 ## Built-in Tools
 
-| Tool | Description |
-|------|-------------|
-| `readFile` | Read file contents with optional line range |
-| `writeFile` | Create or overwrite files |
-| `editFile` | Find-and-replace text in files |
-| `multiEdit` | Apply multiple replacements in one pass |
-| `patch` | Apply unified diffs |
-| `listFiles` | Glob-based file discovery |
-| `searchFiles` | Regex search across files |
-| `bash` | Shell command execution (requires approval) |
-| `git` | Git operations with approval gating |
-| `memory` | Persist key/value context across sessions |
-| `todoManager` | Track multi-step work items |
-| `directoryTree` | Show directory structure |
-| `codeOutline` | Extract symbols from source files |
-| `diffFiles` | Compare files or raw content |
-| `rename` | Rename or move files and directories |
-| `webSearch` | Search the web via SearXNG |
-| `fetchUrl` | Make HTTP requests to URLs |
-| `think` | Private scratchpad for planning |
-| `agentDone` | Mark a task as completed |
+| Tool | File | Description |
+|------|------|-------------|
+| `readFile` | `src/tools/read-file.ts` | Read file contents with optional line range |
+| `writeFile` | `src/tools/write-file.ts` | Create or overwrite files |
+| `editFile` | `src/tools/edit-file.ts` | Find-and-replace text in files |
+| `listFiles` | `src/tools/list-files.ts` | Glob-based file discovery |
+| `searchFiles` | `src/tools/search-files.ts` | Regex search across files |
+| `bash` | `src/tools/bash.ts` | Shell command execution (requires approval) |
+| `git` | `src/tools/git.ts` | Git operations with approval gating |
+| `memory` | `src/tools/memory.ts` | Persist key/value context across sessions |
+| `todoManager` | `src/tools/todo-manager.ts` | Track multi-step work items |
+| `multiEdit` | `src/tools/multi-edit.ts` | Apply multiple replacements in one pass |
+| `patch` | `src/tools/patch.ts` | Apply unified diffs |
+| `rename` | `src/tools/rename.ts` | Rename or move files and directories |
+| `directoryTree` | `src/tools/directory-tree.ts` | Show directory structure |
+| `codeOutline` | `src/tools/code-outline.ts` | Extract symbols from source files |
+| `diffFiles` | `src/tools/diff-files.ts` | Compare files or raw content |
+| `webSearch` | `src/tools/web-search.ts` | Search the web via SearXNG |
+| `fetchUrl` | `src/tools/fetch.ts` | Make HTTP requests to URLs |
+| `think` | `src/tools/think.ts` | Private scratchpad for planning |
+| `agentDone` | `src/tools/agent-done.ts` | Mark a task as completed |
 
 ## Development
 
@@ -121,22 +121,24 @@ npm install
 | `npm run dev` | Run in development mode (tsx) |
 | `npm run build` | Compile TypeScript to dist/ |
 | `npm start` | Run compiled version |
-| `npm test` | Run tests via Vitest |
+| `npm test` | Run Vitest tests |
+| `npm run test:watch` | Run Vitest in watch mode |
 | `npm run typecheck` | Type-check without emitting |
+| `npm run lint` | Check formatting with Prettier |
 | `npm run format` | Format with Prettier |
 
 ## Architecture
 
 ```text
 src/
-  agents/        Agent runner, loader, and config
+  agents/        Agent loader, runner, and configs
   core/          Config, conversation engine, providers, sessions, types
   tools/         Built-in tools and tool registry
   ui/            Ink components, hooks, context
   utils/         File I/O, logging, project detection
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed architecture and contribution guide.
+See [GOLEM.md](GOLEM.md) for the repository guide and agent conventions.
 
 ## License
 
