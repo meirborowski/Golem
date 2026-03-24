@@ -1,7 +1,7 @@
 ---
 name: default
 description: General-purpose coding assistant
-tools: [readFile, writeFile, editFile, listFiles, searchFiles, bash, git, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles, agentDone]
+tools: [readFile, writeFile, editFile, listFiles, searchFiles, bash, git, think, fetchUrl, patch, todoManager, memory, multiEdit, codeOutline, rename, directoryTree, webSearch, diffFiles, delegateAgent, agentDone]
 maxTurns: 20
 maxConsecutiveErrors: 3
 continuationPrompt: Continue working on the task. If you are done, call the agentDone tool.

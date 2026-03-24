@@ -277,5 +277,9 @@ export function useConversation() {
     tokenUsage: state.tokenUsage,
     sendMessage,
     loadSession,
+    /** The underlying ConversationEngine instance. */
+    engine: engineRef.current,
+    /** Approval callback for tools that require user confirmation. */
+    approvalCallback,
   };
 }

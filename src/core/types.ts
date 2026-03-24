@@ -131,6 +131,8 @@ export interface AgentModeState {
   toolActivity: AgentToolActivity[];
   totalToolsExecuted: number;
   todos: AgentTodoItem[];
+  /** Stack of active sub-agent names during agent chaining. */
+  chainStack: string[];
 }
 
 // ── App State ───────────────────────────────────────────────────────────────
@@ -178,7 +180,9 @@ export type AppAction =
   | { type: 'AGENT_TOOL_START'; toolName: string; argsPreview: string }
   | { type: 'AGENT_TOOL_DONE'; toolName: string; status: 'completed' | 'error'; durationMs?: number }
   | { type: 'AGENT_UPDATE_TODOS'; todos: AgentTodoItem[] }
-  | { type: 'SET_AGENT_FINAL_MESSAGE'; content: string; toolCalls?: ToolCallInfo[] };
+  | { type: 'SET_AGENT_FINAL_MESSAGE'; content: string; toolCalls?: ToolCallInfo[] }
+  | { type: 'AGENT_CHAIN_PUSH'; agentName: string }
+  | { type: 'AGENT_CHAIN_POP' };
 
 // ── Turn Result ─────────────────────────────────────────────────────────────
 

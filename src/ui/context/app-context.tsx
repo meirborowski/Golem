@@ -117,6 +117,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           toolActivity: [],
           totalToolsExecuted: 0,
           todos: [],
+          chainStack: [],
         },
       };
 
@@ -177,6 +178,28 @@ function appReducer(state: AppState, action: AppAction): AppState {
         agentMode: {
           ...state.agentMode,
           todos: action.todos,
+        },
+      };
+    }
+
+    case 'AGENT_CHAIN_PUSH': {
+      if (!state.agentMode) return state;
+      return {
+        ...state,
+        agentMode: {
+          ...state.agentMode,
+          chainStack: [...state.agentMode.chainStack, action.agentName],
+        },
+      };
+    }
+
+    case 'AGENT_CHAIN_POP': {
+      if (!state.agentMode) return state;
+      return {
+        ...state,
+        agentMode: {
+          ...state.agentMode,
+          chainStack: state.agentMode.chainStack.slice(0, -1),
         },
       };
     }

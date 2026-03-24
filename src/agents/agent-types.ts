@@ -56,3 +56,18 @@ export interface AgentRunResult {
   lastError: string;
   turnsUsed: number;
 }
+
+// ── Agent Chaining ──────────────────────────────────────────────────────────
+
+export interface ChainContext {
+  /** Current nesting depth. Root agent is 0. */
+  depth: number;
+  /** Max allowed nesting depth. */
+  maxDepth: number;
+  /** Agent names in the current chain stack (for cycle detection). */
+  activeAgents: Set<string>;
+  /** Notify UI when a sub-agent starts. */
+  onSubAgentStart?: (agentName: string, depth: number) => void;
+  /** Notify UI when a sub-agent completes. */
+  onSubAgentComplete?: (agentName: string, depth: number, result: AgentRunResult) => void;
+}

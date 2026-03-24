@@ -32,6 +32,18 @@ export function AgentProgress({ agentMode }: { agentMode: AgentModeState }) {
         <Text dimColor> | Escape to stop</Text>
       </Box>
 
+      {agentMode.chainStack.length > 0 && (
+        <Box marginLeft={2}>
+          <Text color="blue">
+            {'↳ delegating to: '}
+            {agentMode.chainStack[agentMode.chainStack.length - 1]}
+            {agentMode.chainStack.length > 1 && (
+              <Text dimColor>{` (depth ${agentMode.chainStack.length})`}</Text>
+            )}
+          </Text>
+        </Box>
+      )}
+
       {hiddenCount > 0 && (
         <Box marginLeft={2}>
           <Text dimColor>… {hiddenCount} earlier tool{hiddenCount > 1 ? 's' : ''}</Text>
