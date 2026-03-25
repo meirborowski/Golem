@@ -131,12 +131,14 @@ npm install
 
 ```text
 src/
-  core/          Config, conversation engine, providers, sessions, extensions, middleware, types
-  extensions/    Built-in extensions for commands, providers, tools, and prompt sections
-  tools/         Built-in tools
-  tools/         Built-in tools and tool registry
-  ui/            Ink components, hooks, context
-  utils/         File I/O, logging, project detection
+  bus/            Typed event bus — GolemEvent union, EventBus, helpers
+  subscribers/    Event bus subscribers — StreamCoordinator, ToolExecutor, AgentLoop, etc.
+  core/           Config, types, session, extension registry, command handler
+  extensions/     Built-in extensions for commands, providers, tools, and prompt sections
+  agents/         Agent loader/runner and markdown-based agent configs
+  tools/          Built-in tool definitions (one file per tool)
+  ui/             Ink components, bus-driven hooks, context
+  utils/          File I/O, logging, project detection
 ```
 
 See [GOLEM.md](GOLEM.md) for the repository guide and agent conventions.

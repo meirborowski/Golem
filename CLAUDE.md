@@ -8,28 +8,36 @@ Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It s
 
 ## Architecture
 
-Three-layer design with strict separation of concerns:
+Event bus architecture with typed pub/sub and decoupled subscribers:
 
 ```text
-src/agents/    Agent loader/runner/types. Orchestrates multi-turn task execution.
-src/core/      Pure logic. No React. Independently testable.
-src/ui/        Ink components + hooks. Thin rendering layer.
-src/tools/     Self-contained tool() definitions with Zod schemas.
-src/utils/     Shared helpers (file I/O, logging, project detection).
+src/bus/           Typed event bus: GolemEvent union (~30 events), EventBus, helpers.
+src/subscribers/   Bus subscribers: StreamCoordinator, ToolExecutor, AgentLoop, McpBridge,
+                   HistoryManager, PromptBuilder, ConfigManager, ApprovalGate, SessionManager,
+                   CommandHandler.
+src/agents/        Agent loader/runner/types. Orchestrates multi-turn task execution.
+src/core/          Config, types, session, extension registry, command handler.
+src/ui/            Ink components + bus-driven hooks. Thin rendering layer.
+src/tools/         Self-contained tool() definitions with Zod schemas.
+src/utils/         Shared helpers (file I/O, logging, project detection).
 ```
 
 ### Core Components
 
-- **Agent Runner** (`src/agents/agent-runner.ts`): Coordinates multi-turn agent execution, continues until `agentDone`, max turns, cancellation, or repeated errors. Collects tool calls and final output.
-- **ConversationEngine** (`src/core/conversation.ts`): Manages message history and calls `streamText`. Yields `StreamEvent` objects via async generator. The `use-conversation` hook bridges it to React. Includes context window management (auto-truncates old messages), loads project docs (GOLEM.md/CLAUDE.md/README.md) into the system prompt, and includes remembered context from project/global memory.
-- **Provider Registry** (`src/core/provider-registry.ts`): Maps provider names to `@ai-sdk/*` factory functions. Resolves model + API key from config/env.
-- **Tool Registry** (`src/core/tool-registry.ts`): Assembles all built-in tools into a ToolSet for the AI SDK. Wraps tools requiring approval (bash) and conditional git operations with a callback gate.
+- **EventBus** (`src/bus/event-bus.ts`): Typed pub/sub with `on/emit/once/waitFor/use`. Events are a discriminated union (`GolemEvent`) grouped by domain: `stream:*`, `tool:*`, `approval:*`, `agent:*`, `mcp:*`, `history:*`, `session:*`, `config:*`, `command:*`, `ui:*`.
+- **Bootstrap** (`src/bootstrap.ts`): `createGolemBus()` creates the bus, all subscribers, registers providers and tools from extensions.
+- **StreamCoordinator** (`src/subscribers/stream-coordinator.ts`): Calls `streamText` from the AI SDK, wraps tool execute functions to route through the bus.
+- **ToolExecutor** (`src/subscribers/tool-executor.ts`): Executes tools with inline approval checking. Replaces the old middleware pipeline.
+- **ConfigManager** (`src/subscribers/config-manager.ts`): Holds resolved config and provider entries. Replaces the old global provider registry.
+- **AgentLoop** (`src/subscribers/agent-loop.ts`): Multi-turn agent state machine driven by `stream:finished` events.
+- **McpBridge** (`src/subscribers/mcp-bridge.ts`): MCP server connections with dynamic tool discovery (eliminates race conditions).
+- **Agent Runner** (`src/agents/agent-runner.ts`): Framework-agnostic multi-turn loop with stop conditions.
 - **Config** (`src/core/config.ts`): Layered resolution: defaults < global file < project file < env vars < CLI args.
 - **Session** (`src/core/session.ts`): Saves/loads/lists conversation sessions as JSON files in `~/.config/golem/sessions/`.
 
 ## State Management
 
-Single `useReducer` at the App level, distributed via React Context (`AppContextProvider`). Actions include the chat stream lifecycle and approval flow: `ADD_USER_MESSAGE`, `START_STREAMING`, `APPEND_CHUNK`, `ADD_TOOL_CALL`, `UPDATE_TOOL_CALL`, `FINISH_STREAMING`, `SET_ERROR`, `CLEAR_MESSAGES`, `ADD_SYSTEM_MESSAGE`, `LOAD_SESSION`, `SET_PENDING_APPROVAL`.
+Event bus with typed events replaces the old `useReducer`. UI state is derived from bus events via focused hooks (`useBusMessages`, `useBusStreaming`, `useBusApproval`, `useBusAgent`, `useBusTokenUsage`, `useBusSendMessage`). `AppContextProvider` remains as a thin pass-through for display-only values (config, model name, provider name, registry).
 
 ## Rendering Performance
 
@@ -78,24 +86,26 @@ export const myTool = (cwd: string) =>
 ```
 
 2. Add export to `src/tools/index.ts`
-3. Add to the tool map in `src/core/tool-registry.ts`
+3. Add to the tool map in `src/extensions/builtin-tools.ts`
 4. Add tests in `src/tools/tools.test.ts`
 
 ## How to Add a New Provider
 
 1. Install `@ai-sdk/{provider}` or community provider package
-2. Add entry in `src/core/provider-registry.ts`:
+2. Add entry in `src/extensions/builtin-providers.ts`:
 
 ```typescript
-providers.set('myProvider', {
+myProvider: {
   name: 'myProvider',
   defaultModel: 'model-name',
   envKeyName: 'MY_PROVIDER_API_KEY',
-  createModel: (modelId, options) => {
-    const provider = createMyProvider({ apiKey: options?.apiKey });
+  createModel: (modelId: string, options?: ProviderConfig): LanguageModel => {
+    const key = options?.apiKey || process.env['MY_PROVIDER_API_KEY'];
+    if (!key) throw new Error('API key not found.');
+    const provider = createMyProvider({ apiKey: key });
     return provider(modelId);
   },
-});
+},
 ```
 
 ## Built-in Tools

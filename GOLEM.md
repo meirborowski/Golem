@@ -8,37 +8,53 @@ Golem is a provider-agnostic CLI AI coding assistant built with TypeScript. It s
 
 ## Current Architecture
 
-Golem is organized around a clear runtime pipeline:
+Golem uses an event bus architecture where decoupled subscribers communicate through typed events.
 
 ```text
-src/index.tsx          CLI entrypoint and app bootstrap
-src/app.tsx            App wiring, provider/tool/extension initialization
-src/agents/            Agent loading and multi-turn execution
-src/core/              Core business logic, config, sessions, registry, middleware
-src/ui/                Ink components, hooks, and React context
-src/tools/             Built-in tool() implementations
-src/extensions/        Extension packages that add tools, commands, providers, prompts
+src/index.tsx           CLI entrypoint, config resolution, process setup
+src/app.tsx             React root — creates bus via bootstrap, wraps with BusProvider
+src/bootstrap.ts        Creates EventBus, all subscribers, registers tools/providers
+src/bus/                Typed event bus: GolemEvent union, EventBus, helpers
+src/subscribers/        Bus subscribers that drive the runtime
+src/agents/             Agent loading and multi-turn execution
+src/core/               Config, types, session, extension registry, command handler
+src/ui/                 Ink components and bus-driven hooks
+src/tools/              Built-in tool() implementations
+src/extensions/         Extension packages that add tools, commands, providers, prompts
 src/utils/              Shared helpers for files, logging, and project detection
 ```
 
 ### Core Runtime Flow
 
-1. The CLI resolves config and initializes logging in `src/index.tsx`.
-2. `App` wires together the selected provider, tool registry, MCP support, and extension registry.
-3. `ConversationEngine` manages message history, prompt construction, memory loading, and `streamText` calls.
-4. `runAgent` coordinates multi-turn tool use until completion, cancellation, or `agentDone`.
-5. React/Ink UI stays thin: it renders state, handles input, and delegates behavior to core modules.
+1. `src/index.tsx` resolves config, initializes logging, starts SearXNG.
+2. `src/app.tsx` creates the extension registry, loads agent config, then calls `createGolemBus()` which builds the event bus and all subscribers.
+3. Bootstrap registers providers and tools from extensions onto ConfigManager and ToolExecutor.
+4. ChatView mounts and emits `ui:ready`, triggering McpBridge to connect MCP servers.
+5. User input emits `ui:input-submitted` → CommandHandler routes to `stream:requested` or slash commands.
+6. StreamCoordinator calls `streamText`, emitting `stream:text-delta` / `tool:call-requested` / `stream:finished` events.
+7. ToolExecutor handles tool execution with inline approval checks (emits `approval:requested` for gated tools).
+8. AgentLoop coordinates multi-turn execution by listening to `stream:finished` and deciding whether to continue.
+9. Bus-driven UI hooks (`useBusMessages`, `useBusStreaming`, `useBusApproval`, etc.) subscribe to events and update React state.
 
-### Core Components
+### Bus Subscribers
 
-- **Agent Loader / Runner** (`src/agents/`): Loads agent configs from markdown files and runs multi-turn execution.
-- **ConversationEngine** (`src/core/conversation.ts`): Owns message history, truncation, system prompt assembly, memory injection, and model streaming.
-- **Provider Registry** (`src/core/provider-registry.ts`): Resolves configured providers/models and initializes provider extensions.
-- **Tool Registry** (`src/core/tool-registry.ts`): Builds the AI SDK toolset, applies approval gates, and wraps middleware where needed.
+- **StreamCoordinator** (`src/subscribers/stream-coordinator.ts`): Manages `streamText` calls from the Vercel AI SDK. Wraps tools to route execution through the bus.
+- **ToolExecutor** (`src/subscribers/tool-executor.ts`): Executes tools, checks approval config, manages the live tool set.
+- **ApprovalGate** (`src/subscribers/approval-gate.ts`): Non-blocking approval state. UI reads pending state and emits `approval:resolved` directly.
+- **AgentLoop** (`src/subscribers/agent-loop.ts`): Multi-turn agent state machine with stop conditions.
+- **McpBridge** (`src/subscribers/mcp-bridge.ts`): Connects MCP servers, discovers tools, registers them dynamically.
+- **HistoryManager** (`src/subscribers/history-manager.ts`): Message history and context window truncation.
+- **PromptBuilder** (`src/subscribers/prompt-builder.ts`): System prompt assembly with caching.
+- **ConfigManager** (`src/subscribers/config-manager.ts`): Config resolution, provider registry, model switching.
+- **SessionManager** (`src/subscribers/session-manager.ts`): Save/load conversation sessions.
+- **CommandHandler** (`src/subscribers/command-handler.ts`): Slash command routing.
+
+### Other Core Components
+
 - **Extension Registry** (`src/core/extension-registry.ts`): Collects tools, providers, commands, and system prompt sections from extensions.
 - **Config** (`src/core/config.ts`): Resolves settings from defaults, global config, project config, env vars, and CLI args.
-- **Session** (`src/core/session.ts`): Saves, loads, lists, and exports sessions under the user config directory.
-- **MCP Integration** (`src/core/mcp-client.ts`): Connects external MCP servers and exposes their tools through the same approval flow.
+- **Session** (`src/core/session.ts`): Saves, loads, lists, and exports sessions.
+- **Agent Runner** (`src/agents/agent-runner.ts`): Framework-agnostic multi-turn loop (used by AgentLoop subscriber and delegate-agent tool).
 
 ## Working Style and Conventions
 
@@ -54,13 +70,16 @@ src/utils/              Shared helpers for files, logging, and project detection
 
 ## State Management
 
-The app uses a single `useReducer` at the top level, shared through React context. The reducer drives:
+The app uses an event bus (`src/bus/`) with typed events. UI state is derived from bus events via focused hooks:
 
-- message lifecycle updates
-- streaming state
-- tool call tracking
-- approval prompts
-- session loading and clearing
+- `useBusMessages` — message list from `history:*` events
+- `useBusStreaming` — streaming state + 30fps text batching from `stream:*` events
+- `useBusApproval` — approval state from `approval:*` events (no Promise callbacks)
+- `useBusAgent` — agent mode state from `agent:*` and `tool:*` events
+- `useBusTokenUsage` — token usage from `stream:finished`
+- `useBusSendMessage` — emits `ui:input-submitted` or calls `AgentLoop.run()`
+
+`AppContextProvider` remains as a thin pass-through for display-only values (config, model name, provider name, registry).
 
 ## Rendering Performance
 
