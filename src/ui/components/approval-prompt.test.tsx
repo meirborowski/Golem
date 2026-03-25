@@ -8,8 +8,9 @@ describe('ApprovalPrompt', () => {
         toolCallId: 'call-123',
         toolName: 'bash',
         args: { command: 'npm test' },
-        resolve: () => {},
       },
+      onApprove: () => {},
+      onDeny: () => {},
     });
 
     expect(element).toMatchSnapshot();

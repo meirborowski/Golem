@@ -1,7 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Box, Text, Static, useApp, useInput } from 'ink';
 import { useAppContext } from '../context/app-context.js';
-import { useAgent } from '../hooks/use-agent.js';
+import { useBus } from '../context/bus-provider.js';
+import { useBusMessages } from '../hooks/use-bus-messages.js';
+import { useBusStreaming } from '../hooks/use-bus-streaming.js';
+import { useBusApproval } from '../hooks/use-bus-approval.js';
+import { useBusAgent } from '../hooks/use-bus-agent.js';
+import { useBusTokenUsage } from '../hooks/use-bus-token-usage.js';
+import { useBusSendMessage } from '../hooks/use-bus-send-message.js';
+import { createEvent } from '../../bus/helpers.js';
 import { handleCommand, getErrorHint, type CommandContext } from '../../core/command-handler.js';
 import { Welcome } from './welcome.js';
 import { Message } from './message.js';
@@ -12,14 +19,28 @@ import { ApprovalPrompt } from './approval-prompt.js';
 import { AgentProgress } from './agent-progress.js';
 
 export function ChatView() {
-  const { config, registry, dispatch, state, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
-  const { messages, isStreaming, error, tokenUsage, sendMessage, cancelAgent, loadSession: loadIntoEngine } =
-    useAgent();
+  // Display-only values from the old context (config, provider names, registry, etc.)
+  const { config, registry, dispatch, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
+
+  // Bus-driven state
+  const bus = useBus();
+  const messages = useBusMessages();
+  const { isStreaming, streamingText, error } = useBusStreaming();
+  const { pendingApproval, approve, deny } = useBusApproval();
+  const agentMode = useBusAgent();
+  const tokenUsage = useBusTokenUsage();
+  const { sendMessage, sendAgentMessage, cancelAgent } = useBusSendMessage(agent);
+
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { exit } = useApp();
 
-  const isAgentRunning = state.agentMode?.status === 'running';
+  // Emit ui:ready on mount so McpBridge starts connecting
+  useEffect(() => {
+    void bus.emit(createEvent('ui:ready', {}));
+  }, [bus]);
+
+  const isAgentRunning = agentMode?.status === 'running';
 
   // Allow Escape to cancel agent mode
   useInput((_input, key) => {
@@ -30,9 +51,8 @@ export function ChatView() {
 
   const handleSubmit = (input: string) => {
     if (showWelcome) setShowWelcome(false);
-    if (state.error) dispatch({ type: 'CLEAR_ERROR' });
 
-    // Slash command handling
+    // Slash command handling (still inline for now)
     if (input.startsWith('/')) {
       const context: CommandContext = {
         messages,
@@ -68,7 +88,7 @@ export function ChatView() {
           return;
 
         case 'session-loaded':
-          loadIntoEngine(result.messages, result.tokenUsage);
+          // TODO: Wire session loading through bus
           setCurrentSessionId(result.sessionId);
           setShowWelcome(false);
           dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
@@ -107,31 +127,30 @@ export function ChatView() {
       }
     }
 
-    sendMessage(input);
+    // Regular messages
+    if (config.agent && config.agent !== 'default') {
+      sendAgentMessage(input);
+    } else {
+      sendMessage(input);
+    }
   };
 
   // Split messages: completed ones go to <Static>, the active one stays dynamic
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-  const isLastStreaming = isStreaming && lastMsg?.role === 'assistant';
+  const isLastAssistant = lastMsg?.role === 'assistant';
 
-  // Completed messages = all except the one currently being streamed
+  // Completed messages = all messages (active streaming is separate)
   const completedMessages = useMemo(() => {
-    if (isLastStreaming) {
-      return messages.slice(0, -1).map((msg, i) => ({ ...msg, _key: i }));
-    }
     return messages.map((msg, i) => ({ ...msg, _key: i }));
-  }, [messages, isLastStreaming]);
+  }, [messages]);
 
-  const activeMessage = isLastStreaming ? lastMsg : null;
+  // Active streaming message (constructed from streamingText, not from messages array)
+  const activeMessage = isStreaming
+    ? { role: 'assistant' as const, content: streamingText, timestamp: Date.now() }
+    : null;
 
-  // Determine spinner label based on current state
-  const spinnerLabel = (() => {
-    const last = messages[messages.length - 1];
-    if (last?.toolCalls?.some((tc) => tc.status === 'running')) {
-      return 'Running tools...';
-    }
-    return 'Thinking...';
-  })();
+  // Determine spinner label
+  const spinnerLabel = isStreaming ? 'Thinking...' : '';
 
   // Count unique MCP servers
   const mcpServerCount = mcpManager
@@ -140,10 +159,9 @@ export function ChatView() {
 
   return (
     <>
-      {/* Static: rendered once, never redrawn — eliminates flicker on old messages */}
+      {/* Static: rendered once, never redrawn */}
       <Static items={completedMessages}>
         {(msg, i) => {
-          // Show welcome before the first message
           if (i === 0 && showWelcome) {
             return (
               <Box key={`welcome-${msg._key}`} flexDirection="column">
@@ -176,13 +194,15 @@ export function ChatView() {
 
         {activeMessage && <Message message={activeMessage} isStreamingThis />}
 
-        {isAgentRunning && (
-          <AgentProgress agentMode={state.agentMode!} />
+        {isAgentRunning && agentMode && (
+          <AgentProgress agentMode={agentMode} />
         )}
 
-        {isStreaming && !state.pendingApproval && !state.agentMode && <Spinner label={spinnerLabel} />}
+        {isStreaming && !pendingApproval && !agentMode && <Spinner label={spinnerLabel} />}
 
-        {state.pendingApproval && <ApprovalPrompt approval={state.pendingApproval} />}
+        {pendingApproval && (
+          <ApprovalPrompt approval={pendingApproval} onApprove={approve} onDeny={deny} />
+        )}
 
         {error && (
           <Box marginLeft={2} marginBottom={1} flexDirection="column">

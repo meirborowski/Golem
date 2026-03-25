@@ -1,21 +1,20 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useApproval } from '../hooks/use-approval.js';
 import { formatApprovalCommand, getApprovalTitle, getApprovalWarning } from '../../core/format-approval.js';
-import type { PendingApproval } from '../../core/types.js';
+import type { PendingApprovalInfo } from '../../subscribers/approval-gate.js';
 
 interface ApprovalPromptProps {
-  approval: PendingApproval;
+  approval: PendingApprovalInfo;
+  onApprove: () => void;
+  onDeny: () => void;
 }
 
-export function ApprovalPrompt({ approval }: ApprovalPromptProps) {
-  const { approve, deny } = useApproval();
-
+export function ApprovalPrompt({ approval, onApprove, onDeny }: ApprovalPromptProps) {
   useInput((input, key) => {
     if (input === 'y' || key.return) {
-      approve();
+      onApprove();
     } else if (input === 'n' || key.escape) {
-      deny();
+      onDeny();
     }
   });
 
