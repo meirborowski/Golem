@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Box, Text, Static, useApp, useInput } from 'ink';
 import { useAppContext } from '../context/app-context.js';
 import { useBus } from '../context/bus-provider.js';
@@ -19,8 +19,8 @@ import { ApprovalPrompt } from './approval-prompt.js';
 import { AgentProgress } from './agent-progress.js';
 
 export function ChatView() {
-  // Display-only values from the old context (config, provider names, registry, etc.)
-  const { config, registry, dispatch, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
+  // Display-only values from context
+  const { config, registry, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
 
   // Bus-driven state
   const bus = useBus();
@@ -40,6 +40,18 @@ export function ChatView() {
     void bus.emit(createEvent('ui:ready', {}));
   }, [bus]);
 
+  /** Emit a system message via the bus. */
+  const emitSystemMessage = useCallback(
+    (content: string) => {
+      void bus.emit(createEvent('command:result', {
+        command: '',
+        output: content,
+        isError: false,
+      }));
+    },
+    [bus],
+  );
+
   const isAgentRunning = agentMode?.status === 'running';
 
   // Allow Escape to cancel agent mode
@@ -52,7 +64,7 @@ export function ChatView() {
   const handleSubmit = (input: string) => {
     if (showWelcome) setShowWelcome(false);
 
-    // Slash command handling (still inline for now)
+    // Slash command handling
     if (input.startsWith('/')) {
       const context: CommandContext = {
         messages,
@@ -69,11 +81,11 @@ export function ChatView() {
 
       switch (result.type) {
         case 'message':
-          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+          emitSystemMessage(result.content);
           return;
 
         case 'clear':
-          dispatch({ type: 'CLEAR_MESSAGES' });
+          void bus.emit(createEvent('history:cleared', {}));
           setCurrentSessionId(null);
           setShowWelcome(true);
           return;
@@ -84,42 +96,39 @@ export function ChatView() {
 
         case 'session-saved':
           setCurrentSessionId(result.sessionId);
-          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+          emitSystemMessage(result.content);
           return;
 
         case 'session-loaded':
-          // TODO: Wire session loading through bus
           setCurrentSessionId(result.sessionId);
           setShowWelcome(false);
-          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+          emitSystemMessage(result.content);
           return;
 
         case 'model-switched':
           try {
             switchModel(result.provider, result.model);
-            dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+            emitSystemMessage(result.content);
           } catch (err) {
-            dispatch({
-              type: 'ADD_SYSTEM_MESSAGE',
-              content: `Failed to switch model: ${err instanceof Error ? err.message : String(err)}`,
-            });
+            emitSystemMessage(
+              `Failed to switch model: ${err instanceof Error ? err.message : String(err)}`,
+            );
           }
           return;
 
         case 'agent-switched':
           switchAgent(result.agent);
-          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+          emitSystemMessage(result.content);
           return;
 
         case 'error':
-          dispatch({ type: 'ADD_SYSTEM_MESSAGE', content: result.content });
+          emitSystemMessage(result.content);
           return;
 
         case 'unknown-command':
-          dispatch({
-            type: 'ADD_SYSTEM_MESSAGE',
-            content: `Unknown command: /${result.command}. Type /help for available commands.`,
-          });
+          emitSystemMessage(
+            `Unknown command: /${result.command}. Type /help for available commands.`,
+          );
           return;
 
         case 'not-a-command':
@@ -134,10 +143,6 @@ export function ChatView() {
       sendMessage(input);
     }
   };
-
-  // Split messages: completed ones go to <Static>, the active one stays dynamic
-  const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-  const isLastAssistant = lastMsg?.role === 'assistant';
 
   // Completed messages = all messages (active streaming is separate)
   const completedMessages = useMemo(() => {
