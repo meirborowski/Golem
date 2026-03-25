@@ -1,6 +1,5 @@
 import type { ToolSet } from './tool-registry.js';
 import type { ProviderEntry, ResolvedConfig } from './types.js';
-import type { ToolMiddleware } from './middleware.js';
 
 // ── Command Definition ───────────────────────────────────────────────────────
 
@@ -24,6 +23,12 @@ export interface SystemPromptSection {
   order?: number;
 }
 
+// ── Middleware (legacy type for extension interface compat) ──────────────────
+
+/** @deprecated Middleware is now handled internally by ToolExecutor. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ToolMiddleware = (ctx: any, next: () => Promise<unknown>) => Promise<unknown>;
+
 // ── Extension Interface ──────────────────────────────────────────────────────
 
 export interface GolemExtension {
@@ -39,7 +44,7 @@ export interface GolemExtension {
   /** Contribute system prompt sections. Called each time the prompt is built. */
   systemPromptSections?: (config: ResolvedConfig) => SystemPromptSection[];
 
-  /** Contribute tool middleware. Called once at tool creation time. */
+  /** @deprecated Middleware is now handled internally by ToolExecutor. */
   middleware?: (config: ResolvedConfig) => ToolMiddleware[];
 
   /** Contribute LLM providers. */

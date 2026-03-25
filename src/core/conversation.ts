@@ -1,10 +1,15 @@
 import { streamText, stepCountIs } from 'ai';
 import type { ModelMessage, LanguageModel, StreamEvent, TokenUsage, ResolvedConfig } from './types.js';
 import type { ToolSet } from './tool-registry.js';
-import type { McpToolDescription } from './mcp-client.js';
 import type { AgentConfig } from '../agents/agent-types.js';
 import type { ExtensionRegistry } from './extension-registry.js';
 import { logger } from '../utils/logger.js';
+
+interface McpToolDescription {
+  name: string;
+  description: string;
+  server: string;
+}
 
 export class ConversationEngine {
   private messages: ModelMessage[] = [];

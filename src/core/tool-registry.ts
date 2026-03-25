@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import { isGitReadOnly } from '../tools/index.js';
-import type { ResolvedConfig, ApprovalCallback } from './types.js';
-import type { ToolMiddleware } from './middleware.js';
-import { applyMiddleware } from './middleware.js';
-import { createApprovalMiddleware } from './middlewares/approval.js';
+import type { ResolvedConfig } from './types.js';
 import type { ExtensionRegistry } from './extension-registry.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,23 +67,13 @@ export function normalizeNullableParams(toolDef: ToolSet[string]): ToolSet[strin
 }
 
 /**
- * Built-in conditional check functions for tools that support "conditional" approval mode.
- * Returns true if the specific invocation needs approval.
- */
-export const CONDITIONAL_CHECKS: Record<string, (args: unknown) => boolean> = {
-  git: (args: unknown) => {
-    const { subcommand, args: gitArgs } = args as { subcommand: string; args: string | null };
-    return !isGitReadOnly(subcommand, gitArgs);
-  },
-};
-
-/**
- * Create tools from the extension registry, filter by agent, normalize, and apply middleware.
+ * Create tools from the extension registry, filter by agent, and normalize.
+ * Approval/middleware is now handled by ToolExecutor subscriber.
  */
 export function createBuiltinTools(
   config: ResolvedConfig,
   registry: ExtensionRegistry,
-  onApprovalNeeded?: ApprovalCallback,
+  _onApprovalNeeded?: unknown,
   toolNames?: string[],
 ): ToolSet {
   // Collect tools from all registered extensions
@@ -99,22 +85,6 @@ export function createBuiltinTools(
   for (const [name, toolDef] of Object.entries(rawTools)) {
     if (allowedNames && !allowedNames.has(name)) continue;
     allTools[name] = normalizeNullableParams(toolDef);
-  }
-
-  // Collect middleware from extensions + add approval middleware
-  const middlewares: ToolMiddleware[] = [];
-
-  if (onApprovalNeeded) {
-    middlewares.push(createApprovalMiddleware(config.approval, onApprovalNeeded, CONDITIONAL_CHECKS));
-  }
-
-  middlewares.push(...registry.collectMiddleware(config));
-
-  // Apply middleware pipeline to each tool
-  if (middlewares.length > 0) {
-    for (const name of Object.keys(allTools)) {
-      allTools[name] = applyMiddleware(allTools[name], name, config, middlewares);
-    }
   }
 
   return allTools;

@@ -1,7 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { saveSession, loadSession, listSessions, exportToMarkdown } from '../core/session.js';
-import { listProviders, getProvider } from '../core/provider-registry.js';
 import { loadAgent, listAgentNames } from '../agents/agent-loader.js';
 import type { GolemExtension, CommandDefinition } from '../core/extension.js';
 import type { CommandContext, CommandResult } from '../core/command-handler.js';
@@ -58,14 +57,11 @@ const commands: Record<string, CommandDefinition> = {
   models: {
     description: 'List available providers and their default models',
     execute: (arg, context) => {
-      const providers = listProviders();
+      const providers = context.providers ?? [];
       const lines = ['Available providers and default models:', ''];
-      for (const name of providers) {
-        const entry = getProvider(name);
-        if (entry) {
-          const active = name === context.activeProvider ? ' (active)' : '';
-          lines.push(`  ${name}${active} — default: ${entry.defaultModel}`);
-        }
+      for (const p of providers) {
+        const active = p.name === context.activeProvider ? ' (active)' : '';
+        lines.push(`  ${p.name}${active} — default: ${p.defaultModel}`);
       }
       lines.push('');
       lines.push('Usage: /model <model-name> or /model <provider>/<model>');
@@ -79,7 +75,7 @@ const commands: Record<string, CommandDefinition> = {
       if (!arg) {
         return { type: 'message', content: `Current provider: ${context.activeProvider}` };
       }
-      const entry = getProvider(arg);
+      const entry = (context.providers ?? []).find((p) => p.name === arg);
       if (!entry) {
         return { type: 'error', content: `Unknown provider: "${arg}"` };
       }

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Box, Text, Static, useApp, useInput } from 'ink';
 import { useAppContext } from '../context/app-context.js';
-import { useBus } from '../context/bus-provider.js';
+import { useBus, useSubscribers } from '../context/bus-provider.js';
 import { useBusMessages } from '../hooks/use-bus-messages.js';
 import { useBusStreaming } from '../hooks/use-bus-streaming.js';
 import { useBusApproval } from '../hooks/use-bus-approval.js';
@@ -20,10 +20,11 @@ import { AgentProgress } from './agent-progress.js';
 
 export function ChatView() {
   // Display-only values from context
-  const { config, registry, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent } = useAppContext();
+  const { config, registry, activeModelName, activeProvider, switchModel, agent, switchAgent } = useAppContext();
 
   // Bus-driven state
   const bus = useBus();
+  const { configManager } = useSubscribers();
   const messages = useBusMessages();
   const { isStreaming, streamingText, error } = useBusStreaming();
   const { pendingApproval, approve, deny } = useBusApproval();
@@ -66,6 +67,12 @@ export function ChatView() {
 
     // Slash command handling
     if (input.startsWith('/')) {
+      const providerNames = configManager.listProviders();
+      const providers = providerNames.map((name) => {
+        const entry = configManager.getProvider(name);
+        return { name, defaultModel: entry?.defaultModel ?? 'unknown' };
+      });
+
       const context: CommandContext = {
         messages,
         tokenUsage,
@@ -75,6 +82,7 @@ export function ChatView() {
         activeModelName,
         agentName: agent.name,
         agentDescription: agent.description,
+        providers,
       };
 
       const result = handleCommand(input, context, registry);
@@ -157,10 +165,9 @@ export function ChatView() {
   // Determine spinner label
   const spinnerLabel = isStreaming ? 'Thinking...' : '';
 
-  // Count unique MCP servers
-  const mcpServerCount = mcpManager
-    ? new Set(mcpManager.toolDescriptions.map((td) => td.server)).size
-    : 0;
+  // MCP server count — tracked by McpBridge subscriber via bus events
+  // TODO: derive from mcp:connected events
+  const mcpServerCount = Object.keys(config.mcpServers).length;
 
   return (
     <>

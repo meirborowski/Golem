@@ -1,7 +1,6 @@
-import type { GolemExtension, CommandDefinition, SystemPromptSection } from './extension.js';
+import type { GolemExtension, CommandDefinition, SystemPromptSection, ToolMiddleware } from './extension.js';
 import type { ToolSet } from './tool-registry.js';
 import type { ProviderEntry, ResolvedConfig } from './types.js';
-import type { ToolMiddleware } from './middleware.js';
 
 export class ExtensionRegistry {
   private extensions: GolemExtension[] = [];

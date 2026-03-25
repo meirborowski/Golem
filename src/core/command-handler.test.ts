@@ -5,8 +5,6 @@ import { tmpdir } from 'node:os';
 import { handleCommand, getErrorHint, type CommandContext } from './command-handler.js';
 import { ExtensionRegistry } from './extension-registry.js';
 import { builtinCommandsExtension } from '../extensions/builtin-commands.js';
-import { builtinProvidersExtension } from '../extensions/builtin-providers.js';
-import { initProviders } from './provider-registry.js';
 import type { ChatMessage, TokenUsage, ResolvedConfig } from './types.js';
 
 const TMP = join(tmpdir(), `golem-test-cmd-${Date.now()}`);
@@ -17,9 +15,7 @@ beforeEach(() => {
   mkdirSync(TMP, { recursive: true });
   vi.stubEnv('XDG_CONFIG_HOME', TMP);
   registry = new ExtensionRegistry();
-  registry.register(builtinProvidersExtension);
   registry.register(builtinCommandsExtension);
-  initProviders(registry);
 });
 afterEach(() => {
   rmSync(TMP, { recursive: true, force: true });
@@ -45,6 +41,13 @@ const testConfig: ResolvedConfig = {
   mcpServers: {},
 };
 
+const testProviders = [
+  { name: 'anthropic', defaultModel: 'claude-sonnet-4-20250514' },
+  { name: 'openai', defaultModel: 'gpt-4o' },
+  { name: 'google', defaultModel: 'gemini-2.0-flash' },
+  { name: 'ollama', defaultModel: 'llama3.1' },
+];
+
 function makeContext(overrides?: Partial<CommandContext>): CommandContext {
   return {
     messages: testMessages,
@@ -55,6 +58,7 @@ function makeContext(overrides?: Partial<CommandContext>): CommandContext {
     activeModelName: 'gpt-4o',
     agentName: 'default',
     agentDescription: 'General-purpose coding assistant',
+    providers: testProviders,
     ...overrides,
   };
 }

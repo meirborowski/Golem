@@ -4,7 +4,7 @@ import { loadAgent } from '../agents/agent-loader.js';
 import { runAgent } from '../agents/agent-runner.js';
 import { ConversationEngine } from '../core/conversation.js';
 import { createBuiltinTools, getToolMeta } from '../core/tool-registry.js';
-import { summarizeToolResult, isToolError } from '../core/stream-utils.js';
+import { summarizeToolResult, isToolError } from '../utils/stream-utils.js';
 import type { ChainContext, AgentCallbacks } from '../agents/agent-types.js';
 import type { ResolvedConfig, ApprovalCallback, TurnResult, ToolCallInfo, LanguageModel } from '../core/types.js';
 import type { ExtensionRegistry } from '../core/extension-registry.js';

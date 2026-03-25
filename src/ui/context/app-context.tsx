@@ -8,7 +8,6 @@
 
 import React, { createContext, useContext } from 'react';
 import type { ResolvedConfig, LanguageModel } from '../../core/types.js';
-import type { McpManager } from '../../core/mcp-client.js';
 import type { AgentConfig } from '../../agents/agent-types.js';
 import type { ExtensionRegistry } from '../../core/extension-registry.js';
 
@@ -19,7 +18,6 @@ interface AppContextValue {
   activeModelName: string;
   activeProvider: string;
   switchModel: (provider: string, model?: string) => void;
-  mcpManager: McpManager | null;
   agent: AgentConfig;
   switchAgent: (agent: AgentConfig) => void;
 }
@@ -34,7 +32,6 @@ export function AppContextProvider({
   activeModelName,
   activeProvider,
   switchModel,
-  mcpManager,
   agent,
   switchAgent,
 }: {
@@ -45,13 +42,12 @@ export function AppContextProvider({
   activeModelName: string;
   activeProvider: string;
   switchModel: (provider: string, model?: string) => void;
-  mcpManager: McpManager | null;
   agent: AgentConfig;
   switchAgent: (agent: AgentConfig) => void;
 }) {
   return (
     <AppContext.Provider
-      value={{ config, registry, activeModel, activeModelName, activeProvider, switchModel, mcpManager, agent, switchAgent }}
+      value={{ config, registry, activeModel, activeModelName, activeProvider, switchModel, agent, switchAgent }}
     >
       {children}
     </AppContext.Provider>

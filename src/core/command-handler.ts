@@ -38,6 +38,11 @@ export type CommandResult =
 
 // ── Command Context ────────────────────────────────────────────────────────
 
+export interface ProviderInfo {
+  name: string;
+  defaultModel: string;
+}
+
 export interface CommandContext {
   messages: ChatMessage[];
   tokenUsage: TokenUsage;
@@ -47,6 +52,8 @@ export interface CommandContext {
   activeModelName: string;
   agentName: string;
   agentDescription: string;
+  /** Available providers with their default models. */
+  providers?: ProviderInfo[];
 }
 
 // ── Dynamic Help Text ──────────────────────────────────────────────────────

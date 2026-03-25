@@ -5,10 +5,8 @@ import { render } from 'ink';
 import meow from 'meow';
 import { App } from './app.js';
 import { resolveConfig } from './core/config.js';
-import { listProviders } from './core/provider-registry.js';
 import { initLogger, logger } from './utils/logger.js';
 import { ensureSearxng, cleanupSearxng } from './utils/searxng.js';
-import { cleanupMcp } from './core/mcp-lifecycle.js';
 
 const cli = meow(
   `
@@ -16,7 +14,7 @@ const cli = meow(
     $ golem [options]
 
   Options
-    --provider, -p   LLM provider (${listProviders().join(', ')})
+    --provider, -p   LLM provider (anthropic, openai, google, ollama)
     --model, -m      Model identifier
     --api-key, -k    API key for the provider
     --agent, -a      Agent config name (default: 'default')
@@ -91,15 +89,16 @@ const searxngBaseUrl =
   config.providers.searxng?.baseUrl ?? process.env.SEARXNG_BASE_URL ?? 'http://localhost:8080';
 await ensureSearxng(searxngBaseUrl);
 
-// Clean up SearXNG container and MCP clients on exit
+// Clean up SearXNG container on exit
+// MCP cleanup is handled by McpBridge subscriber via the bus
 process.on('exit', cleanupSearxng);
 process.on('SIGINT', () => {
   cleanupSearxng();
-  cleanupMcp().finally(() => process.exit(0));
+  process.exit(0);
 });
 process.on('SIGTERM', () => {
   cleanupSearxng();
-  cleanupMcp().finally(() => process.exit(0));
+  process.exit(0);
 });
 
 // Render the Ink app
