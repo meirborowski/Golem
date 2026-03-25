@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { AppContextProvider } from './ui/context/app-context.js';
+import { BusProvider } from './ui/context/bus-provider.js';
 import { ChatView } from './ui/components/chat-view.js';
 import { resolveModel, getDefaultModel, getProvider, initProviders } from './core/provider-registry.js';
 import { createMcpManager, type McpManager } from './core/mcp-client.js';
@@ -7,6 +8,7 @@ import { setActiveMcpManager } from './core/mcp-lifecycle.js';
 import { ExtensionRegistry } from './core/extension-registry.js';
 import { builtinExtensions } from './extensions/index.js';
 import { loadAgent } from './agents/agent-loader.js';
+import { createGolemBus, type GolemBus } from './bootstrap.js';
 import type { AgentConfig } from './agents/agent-types.js';
 import { logger } from './utils/logger.js';
 import type { ResolvedConfig } from './core/types.js';
@@ -51,6 +53,9 @@ export function App({ config }: AppProps) {
     setAgent(newAgent);
     logger.info(`Switched to agent: ${newAgent.name}`);
   }, []);
+
+  // Create the event bus and subscribers (new architecture, coexists with old)
+  const golemBus = useMemo(() => createGolemBus(config, agent, registry), []);
 
   // Initialize MCP servers in background
   useEffect(() => {
@@ -99,18 +104,20 @@ export function App({ config }: AppProps) {
   );
 
   return (
-    <AppContextProvider
-      config={config}
-      registry={registry}
-      activeModel={model}
-      activeModelName={modelName}
-      activeProvider={provider}
-      switchModel={switchModel}
-      mcpManager={mcpManager}
-      agent={agent}
-      switchAgent={switchAgent}
-    >
-      <ChatView />
-    </AppContextProvider>
+    <BusProvider bus={golemBus.bus} subscribers={golemBus.subscribers}>
+      <AppContextProvider
+        config={config}
+        registry={registry}
+        activeModel={model}
+        activeModelName={modelName}
+        activeProvider={provider}
+        switchModel={switchModel}
+        mcpManager={mcpManager}
+        agent={agent}
+        switchAgent={switchAgent}
+      >
+        <ChatView />
+      </AppContextProvider>
+    </BusProvider>
   );
 }
