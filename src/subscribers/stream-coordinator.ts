@@ -21,7 +21,7 @@ import { logger } from '../utils/logger.js';
 type ToolSet = Record<string, any>;
 
 export class StreamCoordinator {
-  private model: LanguageModel;
+  private model: LanguageModel | null = null;
   private disposers: Unsubscribe[] = [];
 
   constructor(
@@ -31,8 +31,7 @@ export class StreamCoordinator {
     private promptBuilder: PromptBuilder,
     private toolExecutor: ToolExecutor,
   ) {
-    this.model = configManager.resolveModel();
-
+    // Model is resolved lazily on first stream:requested (providers may not be registered yet)
     this.disposers.push(
       bus.on('stream:requested', (e) => { void this.handleStreamRequest(e); }),
       bus.on('config:provider-switched', (e) => {
@@ -51,6 +50,11 @@ export class StreamCoordinator {
   ): Promise<void> {
     const requestId = event.id;
     const { userMessage, options } = event;
+
+    // Lazy model resolution (providers registered after constructor)
+    if (!this.model) {
+      this.model = this.configManager.resolveModel();
+    }
 
     // Add user message to history
     if (!options.silent) {
@@ -79,7 +83,7 @@ export class StreamCoordinator {
     try {
       const config = this.configManager.getConfig();
       const streamOptions: Parameters<typeof streamText>[0] = {
-        model: this.model,
+        model: this.model!,
         system: systemPrompt,
         messages,
         tools: toolSet,
