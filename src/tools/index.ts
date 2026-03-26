@@ -1,21 +1,20 @@
-export { readFile } from './read-file.js';
-export { writeFile } from './write-file.js';
-export { editFile } from './edit-file.js';
-export { listFiles } from './list-files.js';
-export { searchFiles } from './search-files.js';
-export { bash } from './bash.js';
-export { git, isGitReadOnly } from './git.js';
-export { think } from './think.js';
-export { fetchUrl } from './fetch.js';
-export { patch } from './patch.js';
-export { todoManager } from './todo-manager.js';
-export { memory } from './memory.js';
-export { multiEdit } from './multi-edit.js';
-export { codeOutline, extractSymbols } from './code-outline.js';
-export { rename } from './rename.js';
-export { directoryTree } from './directory-tree.js';
-export { webSearch } from './web-search.js';
-export { diffFiles } from './diff-files.js';
-export { agentDone } from './agent-done.js';
-export { createDelegateAgent } from './delegate-agent.js';
-export type { DelegateAgentDeps } from './delegate-agent.js';
+import type { IFileSystem } from "../core/interfaces/IFileSystem.js";
+import type { IExecutionEnvironment } from "../core/interfaces/IExecutionEnvironment.js";
+import type { AgentContext } from "../core/entities/AgentContext.js";
+import { createReadFileTool } from "./readFile.js";
+import { createWriteFileTool } from "./writeFile.js";
+import { createListDirectoryTool } from "./listDirectory.js";
+import { createExecuteCommandTool } from "./executeCommand.js";
+
+export function createTools(
+  fs: IFileSystem,
+  exec: IExecutionEnvironment,
+  context: AgentContext,
+) {
+  return {
+    readFile: createReadFileTool(fs),
+    writeFile: createWriteFileTool(fs, context),
+    listDirectory: createListDirectoryTool(fs),
+    executeCommand: createExecuteCommandTool(exec, context.workingDirectory),
+  };
+}

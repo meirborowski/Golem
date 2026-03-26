@@ -1,9 +1,0 @@
-{
-  "approval": {
-    "tools": {
-      "bash": { "approval": "always" },
-      "git": { "approval": "conditional" }
-    },
-    "mcpDefault": "always"
-  }
-}

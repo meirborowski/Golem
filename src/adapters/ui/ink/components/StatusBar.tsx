@@ -1,0 +1,39 @@
+import React from "react";
+import { Box, Text } from "ink";
+import { theme, box } from "../theme.js";
+import type { AppState } from "../hooks/useUIBridge.js";
+
+interface StatusBarProps {
+  appState: AppState;
+  modelName?: string;
+  workingDirectory?: string;
+}
+
+const hintsMap: Record<AppState, string> = {
+  idle: "enter: send  |  type 'exit' to quit",
+  thinking: "waiting for model...",
+  streaming: "streaming response...",
+  confirming: "y: approve all  |  n: reject  |  s: select",
+};
+
+export function StatusBar({ appState, modelName, workingDirectory }: StatusBarProps) {
+  const separator = box.horizontal.repeat(50);
+
+  return (
+    <Box flexDirection="column" marginTop={1}>
+      <Text dimColor>{separator}</Text>
+      <Box justifyContent="space-between">
+        <Box gap={2}>
+          {modelName && <Text dimColor>{modelName}</Text>}
+          {workingDirectory && <Text dimColor>{truncatePath(workingDirectory, 30)}</Text>}
+        </Box>
+        <Text color={theme.muted}>{hintsMap[appState]}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+function truncatePath(path: string, maxLen: number): string {
+  if (path.length <= maxLen) return path;
+  return "..." + path.slice(path.length - maxLen + 3);
+}
