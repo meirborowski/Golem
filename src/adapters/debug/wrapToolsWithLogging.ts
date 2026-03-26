@@ -6,7 +6,8 @@ import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
  * Business logic remains completely unaware of debug mode.
  */
 export function wrapToolsWithLogging<
-  T extends Record<string, { execute?: (...args: unknown[]) => unknown }>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  T extends Record<string, { execute?: (...args: any[]) => any }>,
 >(tools: T, logger: IDebugLogger): T {
   if (!logger.isEnabled()) return tools;
 
