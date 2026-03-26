@@ -1,5 +1,5 @@
 import { appendFileSync, writeFileSync } from "node:fs";
-import type { IDebugLogger } from "../../core/interfaces/IDebugLogger.js";
+import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
 
 export class FileDebugLogger implements IDebugLogger {
   private filePath: string;

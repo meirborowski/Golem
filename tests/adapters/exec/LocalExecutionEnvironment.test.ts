@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LocalExecutionEnvironment } from "../../../src/adapters/exec/LocalExecutionEnvironment.js";
+import { LocalExecutionEnvironment } from "#adapters/exec/LocalExecutionEnvironment.js";
 
 describe("LocalExecutionEnvironment", () => {
   const exec = new LocalExecutionEnvironment();

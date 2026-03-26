@@ -1,8 +1,8 @@
 import { tool, generateText } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
-import type { IFileSystem } from "../core/interfaces/IFileSystem.js";
-import type { AgentContext } from "../core/entities/AgentContext.js";
+import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 const MAX_RAW_LENGTH = 4000;
 const MAX_CONTENT_FOR_LLM = 50000;

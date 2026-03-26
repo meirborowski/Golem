@@ -1,7 +1,7 @@
-import type { IPipelineStep, NextFunction } from "../../core/interfaces/IPipelineStep.js";
-import type { IDebugLogger } from "../../core/interfaces/IDebugLogger.js";
-import { snapshotContext } from "../../core/interfaces/IDebugLogger.js";
-import type { AgentContext } from "../../core/entities/AgentContext.js";
+import type { IPipelineStep, NextFunction } from "#core/interfaces/IPipelineStep.js";
+import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
+import { snapshotContext } from "#core/interfaces/IDebugLogger.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 /**
  * Pipeline step that logs context snapshots before and after the

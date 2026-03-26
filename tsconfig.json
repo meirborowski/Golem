@@ -10,7 +10,13 @@
     "declaration": true,
     "sourceMap": true,
     "skipLibCheck": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "#core/*": ["./src/core/*"],
+      "#adapters/*": ["./src/adapters/*"],
+      "#tools/*": ["./src/tools/*"],
+      "#pipeline/*": ["./src/pipeline/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "tests"]

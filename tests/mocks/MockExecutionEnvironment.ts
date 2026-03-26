@@ -1,4 +1,4 @@
-import type { IExecutionEnvironment, ExecutionResult } from "../../src/core/interfaces/IExecutionEnvironment.js";
+import type { IExecutionEnvironment, ExecutionResult } from "#core/interfaces/IExecutionEnvironment.js";
 
 export class MockExecutionEnvironment implements IExecutionEnvironment {
   private responses: ExecutionResult[];

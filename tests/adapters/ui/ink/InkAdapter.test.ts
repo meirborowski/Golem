@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { UIBridge } from "../../../../src/adapters/ui/ink/UIBridge.js";
-import type { PromptRequest, ConfirmRequest } from "../../../../src/adapters/ui/ink/UIBridge.js";
+import { UIBridge } from "#adapters/ui/ink/UIBridge.js";
+import type { PromptRequest, ConfirmRequest } from "#adapters/ui/ink/UIBridge.js";
 
 // Test the InkAdapter's behavior via UIBridge directly (avoids needing ink-testing-library
 // for unit tests — the bridge is the contract between adapter and React).

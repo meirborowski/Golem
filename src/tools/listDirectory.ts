@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { IFileSystem, FileInfo } from "../core/interfaces/IFileSystem.js";
+import type { IFileSystem, FileInfo } from "#core/interfaces/IFileSystem.js";
 import { createIgnoreFilter } from "./gitignore.js";
 
 const MAX_ENTRIES = 200;

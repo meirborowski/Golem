@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { StatusBar } from "../../../../../src/adapters/ui/ink/components/StatusBar.js";
+import { StatusBar } from "#adapters/ui/ink/components/StatusBar.js";
 
 describe("StatusBar", () => {
   it("shows model name", () => {

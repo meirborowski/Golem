@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
-import type { IFileSystem } from "../core/interfaces/IFileSystem.js";
-import type { IExecutionEnvironment } from "../core/interfaces/IExecutionEnvironment.js";
-import type { AgentContext } from "../core/entities/AgentContext.js";
+import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
+import type { IExecutionEnvironment } from "#core/interfaces/IExecutionEnvironment.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 import { createReadFileTool } from "./readFile.js";
 import { createWriteFileTool } from "./writeFile.js";
 import { createListDirectoryTool } from "./listDirectory.js";

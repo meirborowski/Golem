@@ -1,5 +1,5 @@
-import type { IUserInterface } from "../../src/core/interfaces/IUserInterface.js";
-import type { FileChange } from "../../src/core/entities/FileChange.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 export class MockUserInterface implements IUserInterface {
   public displayed: string[] = [];

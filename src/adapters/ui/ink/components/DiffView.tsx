@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { createTwoFilesPatch } from "diff";
-import type { FileChange } from "../../../../core/entities/FileChange.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 interface DiffViewProps {
   change: FileChange;

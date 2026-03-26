@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import type { LanguageModelV3GenerateResult } from "@ai-sdk/provider";
-import { ContextGatheringStep } from "../../../src/pipeline/steps/ContextGatheringStep.js";
-import { MemoryFileSystemAdapter } from "../../../src/adapters/fs/MemoryFileSystemAdapter.js";
-import type { AgentContext } from "../../../src/core/entities/AgentContext.js";
+import { ContextGatheringStep } from "#pipeline/steps/ContextGatheringStep.js";
+import { MemoryFileSystemAdapter } from "#adapters/fs/MemoryFileSystemAdapter.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 function mockResult(text: string): LanguageModelV3GenerateResult {
   return {

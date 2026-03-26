@@ -1,7 +1,7 @@
 import React from "react";
 import { render } from "ink";
-import type { IUserInterface } from "../../../core/interfaces/IUserInterface.js";
-import type { FileChange } from "../../../core/entities/FileChange.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 import { UIBridge } from "./UIBridge.js";
 import { GolemApp } from "./components/GolemApp.js";
 

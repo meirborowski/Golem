@@ -1,8 +1,8 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { ChangeConfirmation } from "../../../../../src/adapters/ui/ink/components/ChangeConfirmation.js";
-import type { FileChange } from "../../../../../src/core/entities/FileChange.js";
+import { ChangeConfirmation } from "#adapters/ui/ink/components/ChangeConfirmation.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 describe("ChangeConfirmation", () => {
   const changes: FileChange[] = [

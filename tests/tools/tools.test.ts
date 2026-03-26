@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import type { LanguageModelV3GenerateResult } from "@ai-sdk/provider";
-import { MemoryFileSystemAdapter } from "../../src/adapters/fs/MemoryFileSystemAdapter.js";
+import { MemoryFileSystemAdapter } from "#adapters/fs/MemoryFileSystemAdapter.js";
 import { MockExecutionEnvironment } from "../mocks/MockExecutionEnvironment.js";
-import { createReadFileTool } from "../../src/tools/readFile.js";
-import { createWriteFileTool } from "../../src/tools/writeFile.js";
-import { createListDirectoryTool } from "../../src/tools/listDirectory.js";
-import { createDirectoryTreeTool } from "../../src/tools/directoryTree.js";
-import { createExecuteCommandTool } from "../../src/tools/executeCommand.js";
-import type { AgentContext } from "../../src/core/entities/AgentContext.js";
+import { createReadFileTool } from "#tools/readFile.js";
+import { createWriteFileTool } from "#tools/writeFile.js";
+import { createListDirectoryTool } from "#tools/listDirectory.js";
+import { createDirectoryTreeTool } from "#tools/directoryTree.js";
+import { createExecuteCommandTool } from "#tools/executeCommand.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 function createContext(): AgentContext {
   return {

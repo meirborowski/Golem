@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { UIBridge, PromptRequest, ConfirmRequest } from "../UIBridge.js";
-import type { FileChange } from "../../../../core/entities/FileChange.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 function formatToolArgs(toolName: string, args: Record<string, unknown>): string {
   if (toolName === "readFile" && args.path) return String(args.path);

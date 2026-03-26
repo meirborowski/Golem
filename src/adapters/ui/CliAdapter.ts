@@ -1,7 +1,7 @@
 import * as readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import type { IUserInterface } from "../../core/interfaces/IUserInterface.js";
-import type { FileChange } from "../../core/entities/FileChange.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 export class CliAdapter implements IUserInterface {
   private rl: readline.Interface;

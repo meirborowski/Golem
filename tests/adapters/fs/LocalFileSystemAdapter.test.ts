@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { LocalFileSystemAdapter } from "../../../src/adapters/fs/LocalFileSystemAdapter.js";
+import { LocalFileSystemAdapter } from "#adapters/fs/LocalFileSystemAdapter.js";
 
 let tmpDir: string;
 let adapter: LocalFileSystemAdapter;

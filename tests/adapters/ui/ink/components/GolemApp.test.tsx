@@ -1,8 +1,8 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { GolemApp } from "../../../../../src/adapters/ui/ink/components/GolemApp.js";
-import { UIBridge } from "../../../../../src/adapters/ui/ink/UIBridge.js";
+import { GolemApp } from "#adapters/ui/ink/components/GolemApp.js";
+import { UIBridge } from "#adapters/ui/ink/UIBridge.js";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

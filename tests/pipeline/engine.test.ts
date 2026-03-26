@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { PipelineEngine } from "../../src/pipeline/engine.js";
-import type { IPipelineStep, NextFunction } from "../../src/core/interfaces/IPipelineStep.js";
-import type { AgentContext } from "../../src/core/entities/AgentContext.js";
+import { PipelineEngine } from "#pipeline/engine.js";
+import type { IPipelineStep, NextFunction } from "#core/interfaces/IPipelineStep.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 function createContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

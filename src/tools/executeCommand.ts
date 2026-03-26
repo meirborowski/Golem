@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { IExecutionEnvironment } from "../core/interfaces/IExecutionEnvironment.js";
+import type { IExecutionEnvironment } from "#core/interfaces/IExecutionEnvironment.js";
 
 export function createExecuteCommandTool(exec: IExecutionEnvironment, cwd?: string) {
   return tool({

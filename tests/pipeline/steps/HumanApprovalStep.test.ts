@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { HumanApprovalStep } from "../../../src/pipeline/steps/HumanApprovalStep.js";
+import { HumanApprovalStep } from "#pipeline/steps/HumanApprovalStep.js";
 import { MockUserInterface } from "../../mocks/MockUserInterface.js";
-import type { AgentContext } from "../../../src/core/entities/AgentContext.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 function createContext(): AgentContext {
   return {

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import { simulateReadableStream } from "ai";
-import { Agent } from "../../src/core/agent.js";
-import { PipelineEngine } from "../../src/pipeline/engine.js";
-import { MemoryFileSystemAdapter } from "../../src/adapters/fs/MemoryFileSystemAdapter.js";
+import { Agent } from "#core/agent.js";
+import { PipelineEngine } from "#pipeline/engine.js";
+import { MemoryFileSystemAdapter } from "#adapters/fs/MemoryFileSystemAdapter.js";
 import { MockUserInterface } from "../mocks/MockUserInterface.js";
 import { MockExecutionEnvironment } from "../mocks/MockExecutionEnvironment.js";
 

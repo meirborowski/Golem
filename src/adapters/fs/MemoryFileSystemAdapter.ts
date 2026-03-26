@@ -1,4 +1,4 @@
-import type { IFileSystem, FileInfo } from "../../core/interfaces/IFileSystem.js";
+import type { IFileSystem, FileInfo } from "#core/interfaces/IFileSystem.js";
 
 export class MemoryFileSystemAdapter implements IFileSystem {
   private files = new Map<string, { content: string; modifiedAt: Date }>();

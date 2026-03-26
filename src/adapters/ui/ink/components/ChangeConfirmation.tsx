@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { DiffView } from "./DiffView.js";
-import type { FileChange } from "../../../../core/entities/FileChange.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 interface ChangeConfirmationProps {
   changes: FileChange[];

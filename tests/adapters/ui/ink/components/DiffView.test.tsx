@@ -1,8 +1,8 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { DiffView } from "../../../../../src/adapters/ui/ink/components/DiffView.js";
-import type { FileChange } from "../../../../../src/core/entities/FileChange.js";
+import { DiffView } from "#adapters/ui/ink/components/DiffView.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 describe("DiffView", () => {
   it("renders DELETE label for delete operations", () => {

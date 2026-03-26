@@ -1,4 +1,4 @@
-import type { IDebugLogger } from "../../core/interfaces/IDebugLogger.js";
+import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
 
 export class NullDebugLogger implements IDebugLogger {
   isEnabled(): boolean {

@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { IFileSystem, FileInfo } from "../../core/interfaces/IFileSystem.js";
+import type { IFileSystem, FileInfo } from "#core/interfaces/IFileSystem.js";
 
 export class LocalFileSystemAdapter implements IFileSystem {
   private basePath: string;

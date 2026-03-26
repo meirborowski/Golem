@@ -1,4 +1,4 @@
-import type { IFileSystem } from "../core/interfaces/IFileSystem.js";
+import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
 
 // Always ignored regardless of .gitignore
 const DEFAULT_IGNORED = [".git"];

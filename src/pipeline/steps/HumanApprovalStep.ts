@@ -1,6 +1,6 @@
-import type { IPipelineStep, NextFunction } from "../../core/interfaces/IPipelineStep.js";
-import type { IUserInterface } from "../../core/interfaces/IUserInterface.js";
-import type { AgentContext } from "../../core/entities/AgentContext.js";
+import type { IPipelineStep, NextFunction } from "#core/interfaces/IPipelineStep.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 export class HumanApprovalStep implements IPipelineStep {
   name = "HumanApproval";

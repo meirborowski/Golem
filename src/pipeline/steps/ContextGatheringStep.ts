@@ -1,9 +1,9 @@
 import { generateText } from "ai";
 import type { LanguageModel } from "ai";
-import type { IPipelineStep, NextFunction } from "../../core/interfaces/IPipelineStep.js";
-import type { IFileSystem } from "../../core/interfaces/IFileSystem.js";
-import type { IUserInterface } from "../../core/interfaces/IUserInterface.js";
-import type { AgentContext } from "../../core/entities/AgentContext.js";
+import type { IPipelineStep, NextFunction } from "#core/interfaces/IPipelineStep.js";
+import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 const INSTRUCTION_FILES = [
   { path: "GOLEM.md", priority: "HIGHEST", label: "Project-specific instructions (GOLEM.md)" },

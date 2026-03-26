@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { StreamingText } from "../../../../../src/adapters/ui/ink/components/StreamingText.js";
+import { StreamingText } from "#adapters/ui/ink/components/StreamingText.js";
 
 describe("StreamingText", () => {
   it("returns nothing when buffer is empty", () => {

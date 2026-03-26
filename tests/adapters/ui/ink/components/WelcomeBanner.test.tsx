@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { WelcomeBanner } from "../../../../../src/adapters/ui/ink/components/WelcomeBanner.js";
+import { WelcomeBanner } from "#adapters/ui/ink/components/WelcomeBanner.js";
 
 describe("WelcomeBanner", () => {
   it("renders ASCII logo", () => {

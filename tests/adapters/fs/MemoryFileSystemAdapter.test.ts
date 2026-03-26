@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MemoryFileSystemAdapter } from "../../../src/adapters/fs/MemoryFileSystemAdapter.js";
+import { MemoryFileSystemAdapter } from "#adapters/fs/MemoryFileSystemAdapter.js";
 
 describe("MemoryFileSystemAdapter", () => {
   it("reads and writes files", async () => {

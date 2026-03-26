@@ -4,8 +4,8 @@ import type { IFileSystem } from "./interfaces/IFileSystem.js";
 import type { IUserInterface } from "./interfaces/IUserInterface.js";
 import type { IExecutionEnvironment } from "./interfaces/IExecutionEnvironment.js";
 import type { AgentContext } from "./entities/AgentContext.js";
-import { PipelineEngine } from "../pipeline/engine.js";
-import { createTools } from "../tools/index.js";
+import { PipelineEngine } from "#pipeline/engine.js";
+import { createTools } from "#tools/index.js";
 
 export interface AgentConfig {
   model: LanguageModel;

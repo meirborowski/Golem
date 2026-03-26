@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { IFileSystem } from "../core/interfaces/IFileSystem.js";
-import type { AgentContext } from "../core/entities/AgentContext.js";
+import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
 
 export function createWriteFileTool(fs: IFileSystem, context: AgentContext) {
   return tool({

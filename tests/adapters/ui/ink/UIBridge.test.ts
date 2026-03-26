@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { UIBridge } from "../../../../src/adapters/ui/ink/UIBridge.js";
-import type { PromptRequest, ConfirmRequest } from "../../../../src/adapters/ui/ink/UIBridge.js";
+import { UIBridge } from "#adapters/ui/ink/UIBridge.js";
+import type { PromptRequest, ConfirmRequest } from "#adapters/ui/ink/UIBridge.js";
 
 describe("UIBridge", () => {
   it("requestPrompt emits event and resolves on response", async () => {

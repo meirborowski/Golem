@@ -1,8 +1,8 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render } from "ink-testing-library";
-import { MessageLog } from "../../../../../src/adapters/ui/ink/components/MessageLog.js";
-import type { MessageEntry } from "../../../../../src/adapters/ui/ink/hooks/useUIBridge.js";
+import { MessageLog } from "#adapters/ui/ink/components/MessageLog.js";
+import type { MessageEntry } from "#adapters/ui/ink/hooks/useUIBridge.js";
 
 describe("MessageLog", () => {
   it("renders user messages with 'You' prefix", () => {

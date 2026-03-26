@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import { MockLanguageModelV3 } from "ai/test";
 import type { LanguageModelV3GenerateResult } from "@ai-sdk/provider";
 import { ContextGatheringStep } from "./ContextGatheringStep.js";
-import { MemoryFileSystemAdapter } from "../../adapters/fs/MemoryFileSystemAdapter.js";
-import type { AgentContext } from "../../core/entities/AgentContext.js";
-import type { IUserInterface } from "../../core/interfaces/IUserInterface.js";
+import { MemoryFileSystemAdapter } from "#adapters/fs/MemoryFileSystemAdapter.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 
 function createContext(overrides?: Partial<AgentContext>): AgentContext {
   return {

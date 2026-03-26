@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { FileChange } from "../../../core/entities/FileChange.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 export interface PromptRequest {
   message: string;

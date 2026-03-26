@@ -1,7 +1,7 @@
-import type { IPipelineStep, NextFunction } from "../core/interfaces/IPipelineStep.js";
-import type { IDebugLogger } from "../core/interfaces/IDebugLogger.js";
-import type { AgentContext } from "../core/entities/AgentContext.js";
-import { snapshotContext } from "../core/interfaces/IDebugLogger.js";
+import type { IPipelineStep, NextFunction } from "#core/interfaces/IPipelineStep.js";
+import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
+import type { AgentContext } from "#core/entities/AgentContext.js";
+import { snapshotContext } from "#core/interfaces/IDebugLogger.js";
 
 export class PipelineEngine {
   private steps: IPipelineStep[] = [];

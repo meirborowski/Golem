@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MockUserInterface } from "../../mocks/MockUserInterface.js";
-import type { FileChange } from "../../../src/core/entities/FileChange.js";
+import type { FileChange } from "#core/entities/FileChange.js";
 
 describe("IUserInterface contract (via MockUserInterface)", () => {
   it("returns scripted inputs in order", async () => {

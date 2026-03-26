@@ -1,4 +1,4 @@
-import type { IDebugLogger } from "../../core/interfaces/IDebugLogger.js";
+import type { IDebugLogger } from "#core/interfaces/IDebugLogger.js";
 
 /**
  * Wraps a tools record so that every tool's execute() is intercepted
