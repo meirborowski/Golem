@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { openai } from "@ai-sdk/openai";
 import { Agent } from "#core/agent.js";
+import { resolveConfig, displayModel } from "#core/config.js";
+import { createModel } from "#core/createModel.js";
 import { PipelineEngine } from "#pipeline/engine.js";
 import { InkAdapter } from "#adapters/ui/ink/InkAdapter.js";
 import { LocalFileSystemAdapter } from "#adapters/fs/LocalFileSystemAdapter.js";
@@ -14,11 +15,7 @@ import { DebugLoggingStep } from "#adapters/debug/DebugLoggingStep.js";
 import { wrapToolsWithLogging } from "#adapters/debug/wrapToolsWithLogging.js";
 
 async function main() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error("OPENAI_API_KEY environment variable is required.");
-    process.exit(1);
-  }
+  const config = resolveConfig();
 
   const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf-8"));
 
@@ -29,9 +26,9 @@ async function main() {
     ? new FileDebugLogger(join(process.cwd(), ".golem-debug.jsonl"))
     : new NullDebugLogger();
 
-  const model = openai("gpt-4o");
+  const model = createModel(config);
   const ui = new InkAdapter({
-    modelName: "gpt-5.4-mini",
+    modelName: displayModel(config),
     workingDirectory: process.cwd(),
     version: pkg.version,
   });
