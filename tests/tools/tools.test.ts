@@ -1,16 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
+import { MockLanguageModelV3 } from "ai/test";
+import type { LanguageModelV3GenerateResult } from "@ai-sdk/provider";
 import { MemoryFileSystemAdapter } from "../../src/adapters/fs/MemoryFileSystemAdapter.js";
 import { MockExecutionEnvironment } from "../mocks/MockExecutionEnvironment.js";
 import { createReadFileTool } from "../../src/tools/readFile.js";
 import { createWriteFileTool } from "../../src/tools/writeFile.js";
 import { createListDirectoryTool } from "../../src/tools/listDirectory.js";
+import { createDirectoryTreeTool } from "../../src/tools/directoryTree.js";
 import { createExecuteCommandTool } from "../../src/tools/executeCommand.js";
 import type { AgentContext } from "../../src/core/entities/AgentContext.js";
 
 function createContext(): AgentContext {
   return {
     messages: [],
-    currentRequest: "",
+    currentRequest: "test task",
     workingDirectory: "/project",
     gatheredFiles: new Map(),
     pendingChanges: [],
@@ -19,21 +22,61 @@ function createContext(): AgentContext {
   };
 }
 
+function mockResult(text: string): LanguageModelV3GenerateResult {
+  return {
+    content: [{ type: "text", text }],
+    finishReason: { unified: "stop", raw: "stop" },
+    usage: {
+      inputTokens: { total: 10, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
+      outputTokens: { total: 20, text: undefined, reasoning: undefined },
+    },
+    warnings: [],
+  };
+}
+
+function createMockModel(text = "Summarized content.") {
+  return new MockLanguageModelV3({ doGenerate: mockResult(text) });
+}
+
 // Helper to call a tool's execute function directly
 const exec = (tool: any, args: any) => tool.execute(args, { toolCallId: "test", messages: [] });
 
 describe("readFile tool", () => {
-  it("reads file content", async () => {
+  it("reads small file content as-is", async () => {
     const fs = new MemoryFileSystemAdapter({ "/hello.txt": "world" });
-    const tool = createReadFileTool(fs);
+    const tool = createReadFileTool(fs, createMockModel(), createContext());
     const result = await exec(tool, { path: "/hello.txt" });
     expect(result).toBe("world");
   });
 
-  it("throws on missing file", async () => {
+  it("returns error string on missing file", async () => {
     const fs = new MemoryFileSystemAdapter();
-    const tool = createReadFileTool(fs);
-    await expect(exec(tool, { path: "/missing.txt" })).rejects.toThrow();
+    const tool = createReadFileTool(fs, createMockModel(), createContext());
+    const result = await exec(tool, { path: "/missing.txt" });
+    expect(result).toContain("Error reading /missing.txt");
+  });
+
+  it("summarizes large files via LLM", async () => {
+    const largeContent = "x".repeat(5000);
+    const fs = new MemoryFileSystemAdapter({ "/big.ts": largeContent });
+    const model = createMockModel("// key exports only");
+    const tool = createReadFileTool(fs, model, createContext());
+    const result = await exec(tool, { path: "/big.ts" });
+    expect(result).toContain("[Summarized");
+    expect(result).toContain("// key exports only");
+    expect(model.doGenerateCalls).toHaveLength(1);
+  });
+
+  it("falls back to truncation if LLM fails", async () => {
+    const largeContent = "y".repeat(5000);
+    const fs = new MemoryFileSystemAdapter({ "/big.ts": largeContent });
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => { throw new Error("API error"); },
+    });
+    const tool = createReadFileTool(fs, model, createContext());
+    const result = await exec(tool, { path: "/big.ts" });
+    expect(result).toContain("truncated");
+    expect(result.length).toBeLessThan(largeContent.length);
   });
 });
 
@@ -81,6 +124,55 @@ describe("listDirectory tool", () => {
     const result = await exec(tool, { path: "/src" });
     expect(result).toContain("[FILE] /src/a.ts");
     expect(result).toContain("[FILE] /src/b.ts");
+  });
+});
+
+describe("directoryTree tool", () => {
+  it("renders tree with box-drawing characters", async () => {
+    const fs = new MemoryFileSystemAdapter({
+      "/src/core/agent.ts": "agent",
+      "/src/core/entities/AgentContext.ts": "ctx",
+      "/src/index.ts": "entry",
+    });
+    const tool = createDirectoryTreeTool(fs);
+    const result = await exec(tool, { path: "/src" });
+    expect(result).toContain("├── ");
+    expect(result).toContain("└── ");
+    expect(result).toContain("core/");
+    expect(result).toContain("agent.ts");
+    expect(result).toContain("index.ts");
+  });
+
+  it("respects depth limit", async () => {
+    const fs = new MemoryFileSystemAdapter({
+      "/a/b/c/d/e.ts": "deep",
+      "/a/top.ts": "shallow",
+    });
+    const tool = createDirectoryTreeTool(fs);
+    const result = await exec(tool, { path: "/a", depth: 2 });
+    expect(result).toContain("top.ts");
+    // d/e.ts is at depth 4 from /a, should be excluded with depth 2
+    expect(result).not.toContain("e.ts");
+  });
+
+  it("shows directories before files", async () => {
+    const fs = new MemoryFileSystemAdapter({
+      "/proj/zebra.ts": "z",
+      "/proj/alpha/a.ts": "a",
+    });
+    const tool = createDirectoryTreeTool(fs);
+    const result = await exec(tool, { path: "/proj" });
+    const lines = result.split("\n");
+    const alphaLine = lines.findIndex((l: string) => l.includes("alpha/"));
+    const zebraLine = lines.findIndex((l: string) => l.includes("zebra.ts"));
+    expect(alphaLine).toBeLessThan(zebraLine);
+  });
+
+  it("returns empty for nonexistent path", async () => {
+    const fs = new MemoryFileSystemAdapter();
+    const tool = createDirectoryTreeTool(fs);
+    const result = await exec(tool, { path: "/nope" });
+    expect(result).toContain("empty");
   });
 });
 

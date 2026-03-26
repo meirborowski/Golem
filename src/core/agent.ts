@@ -28,6 +28,12 @@ export class Agent {
 
   async run(): Promise<void> {
     const context = this.createContext();
+    const tools = createTools(
+      this.config.fs,
+      this.config.exec,
+      context,
+      this.config.model,
+    );
 
     while (context.shouldContinue) {
       const userInput = await this.config.ui.prompt("You> ");
@@ -42,7 +48,17 @@ export class Agent {
 
       await this.config.prePipeline.run(context);
 
-      await this.generate(context);
+      try {
+        await this.generate(context, tools);
+      } catch (e) {
+        if (this.isContextLengthError(e)) {
+          this.config.ui.displayError(
+            "Context length exceeded. The conversation is too long for the model. Try a shorter request or start a new session.",
+          );
+          continue;
+        }
+        throw e;
+      }
 
       await this.config.postPipeline.run(context);
 
@@ -52,8 +68,10 @@ export class Agent {
     this.config.ui.display("Goodbye.");
   }
 
-  private async generate(context: AgentContext): Promise<void> {
-    const tools = createTools(this.config.fs, this.config.exec, context);
+  private async generate(
+    context: AgentContext,
+    tools: ReturnType<typeof createTools>,
+  ): Promise<void> {
     const stopProgress = this.config.ui.showProgress("Thinking...");
 
     try {
@@ -128,6 +146,14 @@ export class Agent {
       }
     }
     context.pendingChanges = [];
+  }
+
+  private isContextLengthError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      return msg.includes("context_length_exceeded") || msg.includes("context length");
+    }
+    return false;
   }
 
   private createContext(): AgentContext {

@@ -11,18 +11,22 @@ export function createWriteFileTool(fs: IFileSystem, context: AgentContext) {
       content: z.string().describe("Full file content"),
     }),
     execute: async ({ path, content }) => {
-      const existingContent = (await fs.exists(path))
-        ? await fs.readFile(path)
-        : undefined;
+      try {
+        const existingContent = (await fs.exists(path))
+          ? await fs.readFile(path)
+          : undefined;
 
-      context.pendingChanges.push({
-        filePath: path,
-        operation: existingContent !== undefined ? "modify" : "create",
-        originalContent: existingContent,
-        newContent: content,
-      });
+        context.pendingChanges.push({
+          filePath: path,
+          operation: existingContent !== undefined ? "modify" : "create",
+          originalContent: existingContent,
+          newContent: content,
+        });
 
-      return `Staged ${existingContent !== undefined ? "modification to" : "creation of"} ${path}`;
+        return `Staged ${existingContent !== undefined ? "modification to" : "creation of"} ${path}`;
+      } catch (e) {
+        return `Error staging ${path}: ${e instanceof Error ? e.message : String(e)}`;
+      }
     },
   });
 }

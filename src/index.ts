@@ -19,7 +19,7 @@ async function main() {
 
   const model = openai("gpt-4o");
   const ui = new InkAdapter({
-    modelName: "gpt-4o",
+    modelName: "gpt-5.4-mini",
     workingDirectory: process.cwd(),
     version: pkg.version,
   });
@@ -27,7 +27,7 @@ async function main() {
   const exec = new LocalExecutionEnvironment();
 
   const prePipeline = new PipelineEngine();
-  prePipeline.register(new ContextGatheringStep(fs));
+  prePipeline.register(new ContextGatheringStep(fs, model, ui));
 
   const postPipeline = new PipelineEngine();
   postPipeline.register(new HumanApprovalStep(ui));
