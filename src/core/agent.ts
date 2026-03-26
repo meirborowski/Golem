@@ -17,6 +17,7 @@ export interface AgentConfig {
   workingDirectory: string;
   systemPrompt?: string;
   maxSteps?: number;
+  wrapTools?: (tools: ReturnType<typeof createTools>) => ReturnType<typeof createTools>;
 }
 
 export class Agent {
@@ -28,12 +29,13 @@ export class Agent {
 
   async run(): Promise<void> {
     const context = this.createContext();
-    const tools = createTools(
+    const rawTools = createTools(
       this.config.fs,
       this.config.exec,
       context,
       this.config.model,
     );
+    const tools = this.config.wrapTools ? this.config.wrapTools(rawTools) : rawTools;
 
     while (context.shouldContinue) {
       const userInput = await this.config.ui.prompt("You> ");
