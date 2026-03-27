@@ -28,4 +28,28 @@ describe("MarkdownText", () => {
     expect(lastFrame()!).toContain("item one");
     expect(lastFrame()!).toContain("item two");
   });
+
+  it("renders headings without # prefix", () => {
+    const { lastFrame } = render(<MarkdownText content="## Section Title" />);
+    const frame = lastFrame()!;
+    expect(frame).toContain("Section Title");
+    expect(frame).not.toContain("##");
+  });
+
+  it("renders blockquotes", () => {
+    const { lastFrame } = render(<MarkdownText content="> quoted text here" />);
+    expect(lastFrame()!).toContain("quoted text here");
+  });
+
+  it("renders links with URL", () => {
+    const { lastFrame } = render(<MarkdownText content="[click here](https://example.com)" />);
+    const frame = lastFrame()!;
+    expect(frame).toContain("click here");
+    expect(frame).toContain("example.com");
+  });
+
+  it("renders inline code", () => {
+    const { lastFrame } = render(<MarkdownText content="Use `const x = 1` in your code" />);
+    expect(lastFrame()!).toContain("const x = 1");
+  });
 });

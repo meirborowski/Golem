@@ -16,8 +16,9 @@ const hintsMap: Record<AppState, string> = {
   confirming: "y: approve all  |  n: reject  |  s: select",
 };
 
-export function StatusBar({ appState, modelName, workingDirectory }: StatusBarProps) {
-  const separator = box.horizontal.repeat(50);
+export const StatusBar = React.memo(function StatusBar({ appState, modelName, workingDirectory }: StatusBarProps) {
+  const width = Math.min(process.stdout.columns || 80, 100);
+  const separator = box.horizontal.repeat(width);
 
   return (
     <Box flexDirection="column" marginTop={1}>
@@ -31,7 +32,7 @@ export function StatusBar({ appState, modelName, workingDirectory }: StatusBarPr
       </Box>
     </Box>
   );
-}
+});
 
 function truncatePath(path: string, maxLen: number): string {
   if (path.length <= maxLen) return path;

@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Box, Text, Static } from "ink";
-import { theme, box } from "../theme.js";
+import { theme, box, icons } from "../theme.js";
 import { WelcomeBanner } from "./WelcomeBanner.js";
 import { MarkdownText } from "./MarkdownText.js";
-import type { MessageEntry } from "../hooks/useUIBridge.js";
+import { ToolCallLine } from "./ToolCallLine.js";
+import type { MessageEntry, ToolCallEntry } from "../hooks/useUIBridge.js";
 import type { InkAdapterConfig } from "../InkAdapter.js";
 
 type StaticItem =
@@ -14,15 +15,6 @@ interface MessageLogProps {
   messages: MessageEntry[];
   config?: InkAdapterConfig;
 }
-
-const styleMap: Record<MessageEntry["type"], { color: string; borderColor: string; prefix: string }> = {
-  user:          { color: theme.userText,      borderColor: theme.accent,     prefix: "You " },
-  assistant:     { color: theme.assistantText,  borderColor: theme.brand,      prefix: "" },
-  error:         { color: theme.error,          borderColor: theme.error,      prefix: "\u2718 " },
-  system:        { color: theme.muted,          borderColor: theme.dimmed,     prefix: "" },
-  "tool-call":   { color: theme.toolCall,       borderColor: theme.toolCall,   prefix: "\u26A1 " },
-  "tool-result": { color: theme.toolResult,     borderColor: theme.toolResult, prefix: "  " },
-};
 
 export function MessageLog({ messages, config = {} }: MessageLogProps) {
   const [bannerItem] = useState<StaticItem[]>(() => [
@@ -53,12 +45,20 @@ export function MessageLog({ messages, config = {} }: MessageLogProps) {
         }
 
         const msg = item.entry;
-        const style = styleMap[msg.type] ?? styleMap.system;
+
+        if (msg.type === "user") {
+          return (
+            <Box key={item.key} marginTop={1}>
+              <Text color={theme.brand} bold>{icons.prompt} </Text>
+              <Text color={theme.userText} bold>{msg.content}</Text>
+            </Box>
+          );
+        }
 
         if (msg.type === "assistant") {
           return (
             <Box key={item.key} flexDirection="row">
-              <Text color={style.borderColor}>{box.vertical} </Text>
+              <Text color={theme.brand}>{box.vertical} </Text>
               <Box flexDirection="column">
                 <MarkdownText content={msg.content} />
               </Box>
@@ -66,12 +66,22 @@ export function MessageLog({ messages, config = {} }: MessageLogProps) {
           );
         }
 
+        if (msg.type === "tool-call") {
+          return <ToolCallLine key={item.key} entry={msg as ToolCallEntry} />;
+        }
+
+        if (msg.type === "error") {
+          return (
+            <Box key={item.key} marginTop={1}>
+              <Text color={theme.error}>{box.vertical} {icons.error} {msg.content}</Text>
+            </Box>
+          );
+        }
+
+        // system
         return (
-          <Box key={item.key} marginTop={msg.type === "user" ? 1 : 0}>
-            <Text color={style.borderColor}>{box.vertical} </Text>
-            <Text color={style.color}>
-              {style.prefix}{msg.content}
-            </Text>
+          <Box key={item.key}>
+            <Text dimColor>    {msg.content}</Text>
           </Box>
         );
       }}

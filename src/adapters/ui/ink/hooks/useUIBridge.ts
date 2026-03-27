@@ -1,27 +1,47 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { UIBridge, PromptRequest, ConfirmRequest } from "../UIBridge.js";
 import type { FileChange } from "#core/entities/FileChange.js";
+import { toolDisplayNames, toolKeyArgExtractors } from "../theme.js";
 
-function formatToolArgs(toolName: string, args: Record<string, unknown>): string {
-  if (toolName === "readFile" && args.path) return String(args.path);
-  if (toolName === "writeFile" && args.path) return String(args.path);
-  if (toolName === "executeCommand" && args.command) return String(args.command);
-  if (toolName === "listDirectory" && args.path) return String(args.path);
-  const json = JSON.stringify(args);
-  return json.length > 80 ? json.slice(0, 80) + "..." : json;
-}
-
-export type MessageEntry = {
-  type: "user" | "assistant" | "error" | "system" | "tool-call" | "tool-result";
+export type ToolCallEntry = {
+  type: "tool-call";
   content: string;
+  toolName: string;
+  keyArg: string;
+  status: "success" | "error";
+  resultSummary?: string;
+};
+
+export type MessageEntry =
+  | { type: "user"; content: string }
+  | { type: "assistant"; content: string }
+  | { type: "error"; content: string }
+  | { type: "system"; content: string }
+  | ToolCallEntry;
+
+export type PendingToolCall = {
+  rawName: string;
+  label: string;
+  keyArg: string;
 };
 
 export type AppState = "idle" | "thinking" | "streaming" | "confirming";
+
+function extractToolInfo(toolName: string, args: Record<string, unknown>): { label: string; keyArg: string } {
+  const label = toolDisplayNames[toolName] ?? toolName;
+  const extractor = toolKeyArgExtractors[toolName];
+  const keyArg = extractor ? extractor(args) : "";
+  return { label, keyArg };
+}
 
 export function useUIBridge(bridge: UIBridge) {
   const [messages, setMessages] = useState<MessageEntry[]>([]);
   const [streamBuffer, setStreamBuffer] = useState("");
   const [appState, setAppState] = useState<AppState>("idle");
+  const streamRef = useRef("");
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isStreamingRef = useRef(false);
+  const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([]);
   const [progressMessage, setProgressMessage] = useState("");
   const [promptRequest, setPromptRequest] = useState<PromptRequest | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
@@ -35,18 +55,34 @@ export function useUIBridge(bridge: UIBridge) {
       setMessages((prev) => [...prev, { type: "error", content: msg }]);
     };
 
+    const flushStream = () => {
+      flushTimerRef.current = null;
+      setStreamBuffer(streamRef.current);
+    };
+
     const onStreamChunk = (chunk: string) => {
-      setStreamBuffer((prev) => prev + chunk);
-      setAppState("streaming");
+      streamRef.current += chunk;
+      if (!isStreamingRef.current) {
+        isStreamingRef.current = true;
+        setAppState("streaming");
+      }
+      if (!flushTimerRef.current) {
+        flushTimerRef.current = setTimeout(flushStream, 33);
+      }
     };
 
     const onStreamEnd = () => {
-      setStreamBuffer((prev) => {
-        if (prev) {
-          setMessages((msgs) => [...msgs, { type: "assistant", content: prev }]);
-        }
-        return "";
-      });
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      const fullText = streamRef.current;
+      streamRef.current = "";
+      isStreamingRef.current = false;
+      setStreamBuffer("");
+      if (fullText) {
+        setMessages((msgs) => [...msgs, { type: "assistant", content: fullText }]);
+      }
       setAppState("idle");
     };
 
@@ -61,13 +97,28 @@ export function useUIBridge(bridge: UIBridge) {
     };
 
     const onToolCall = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) => {
-      const summary = formatToolArgs(toolName, args);
-      setMessages((prev) => [...prev, { type: "tool-call", content: `${toolName} ${summary}` }]);
+      const { label, keyArg } = extractToolInfo(toolName, args);
+      setPendingToolCalls((prev) => [...prev, { rawName: toolName, label, keyArg }]);
     };
 
     const onToolResult = ({ toolName, result }: { toolName: string; result: string }) => {
-      const summary = result.length > 120 ? result.slice(0, 120) + "..." : result;
-      setMessages((prev) => [...prev, { type: "tool-result", content: `${toolName}: ${summary}` }]);
+      const isError = result.toLowerCase().startsWith("error");
+      setPendingToolCalls((prev) => {
+        const idx = prev.findIndex((tc) => tc.rawName === toolName);
+        if (idx === -1) return prev;
+        const matched = prev[idx];
+        const remaining = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+        const entry: ToolCallEntry = {
+          type: "tool-call",
+          content: `${toolName} ${matched.keyArg}`,
+          toolName: matched.label,
+          keyArg: matched.keyArg,
+          status: isError ? "error" : "success",
+          resultSummary: isError ? (result.length > 120 ? result.slice(0, 120) + "..." : result) : undefined,
+        };
+        setMessages((msgs) => [...msgs, entry]);
+        return remaining;
+      });
     };
 
     const onProgressStart = (msg: string) => {
@@ -77,7 +128,6 @@ export function useUIBridge(bridge: UIBridge) {
 
     const onProgressStop = () => {
       setProgressMessage("");
-      // Don't set idle here — streaming will set the next state
     };
 
     bridge.on("display", onDisplay);
@@ -92,6 +142,10 @@ export function useUIBridge(bridge: UIBridge) {
     bridge.on("progress-stop", onProgressStop);
 
     return () => {
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
       bridge.off("display", onDisplay);
       bridge.off("error", onError);
       bridge.off("stream-chunk", onStreamChunk);
@@ -126,6 +180,7 @@ export function useUIBridge(bridge: UIBridge) {
     streamBuffer,
     appState,
     progressMessage,
+    pendingToolCalls,
     promptRequest,
     confirmRequest,
     submitPrompt,

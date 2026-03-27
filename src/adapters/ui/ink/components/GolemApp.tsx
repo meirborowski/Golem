@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Text } from "ink";
+import { Box } from "ink";
 import type { UIBridge } from "../UIBridge.js";
 import type { InkAdapterConfig } from "../InkAdapter.js";
 import { useUIBridge } from "../hooks/useUIBridge.js";
@@ -8,6 +8,7 @@ import { StreamingText } from "./StreamingText.js";
 import { GolemSpinner } from "./GolemSpinner.js";
 import { PromptInput } from "./PromptInput.js";
 import { ChangeConfirmation } from "./ChangeConfirmation.js";
+import { PendingToolCallLine } from "./PendingToolCallLine.js";
 import { StatusBar } from "./StatusBar.js";
 
 interface GolemAppProps {
@@ -21,6 +22,7 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
     streamBuffer,
     appState,
     progressMessage,
+    pendingToolCalls,
     promptRequest,
     confirmRequest,
     submitPrompt,
@@ -31,7 +33,10 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
     <Box flexDirection="column">
       <MessageLog messages={messages} config={config} />
 
-      <Text>{" "}</Text>
+      {pendingToolCalls.map((tc, i) => (
+        <PendingToolCallLine key={`pending-${i}`} label={tc.label} keyArg={tc.keyArg} />
+      ))}
+
       <Box flexDirection="column">
         {appState === "streaming" && <StreamingText buffer={streamBuffer} />}
 
