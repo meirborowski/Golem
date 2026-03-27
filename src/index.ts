@@ -8,6 +8,7 @@ import { InkAdapter } from "#adapters/ui/ink/InkAdapter.js";
 import { LocalFileSystemAdapter } from "#adapters/fs/LocalFileSystemAdapter.js";
 import { LocalExecutionEnvironment } from "#adapters/exec/LocalExecutionEnvironment.js";
 import { ContextGatheringStep } from "#pipeline/steps/ContextGatheringStep.js";
+import { ContextCompactionStep } from "#pipeline/steps/ContextCompactionStep.js";
 import { HumanApprovalStep } from "#pipeline/steps/HumanApprovalStep.js";
 import { FileDebugLogger } from "#adapters/debug/FileDebugLogger.js";
 import { NullDebugLogger } from "#adapters/debug/NullDebugLogger.js";
@@ -40,6 +41,12 @@ async function main() {
     prePipeline.register(new DebugLoggingStep("pre-pipeline", debugLogger));
   }
   prePipeline.register(new ContextGatheringStep(fs, model, ui));
+  prePipeline.register(new ContextCompactionStep(model, ui, {
+    maxContextTokens: config.maxContextTokens,
+    compactionThreshold: 0.75,
+    targetAfterCompaction: 0.50,
+    protectedTurnCount: 4,
+  }));
 
   const postPipeline = new PipelineEngine(debugLogger);
   if (debugLogger.isEnabled()) {

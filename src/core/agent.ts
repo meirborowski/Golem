@@ -127,6 +127,13 @@ export class Agent {
 
       const response = await result.response;
       context.messages.push(...response.messages as ModelMessage[]);
+
+      const usage = await result.totalUsage;
+      context.tokenUsage = {
+        lastInputTokens: usage.inputTokens ?? 0,
+        lastOutputTokens: usage.outputTokens ?? 0,
+        lastTotalTokens: usage.totalTokens ?? 0,
+      };
     } catch (e) {
       stopProgress();
       throw e;

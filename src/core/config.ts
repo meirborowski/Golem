@@ -4,11 +4,19 @@ export type Provider = (typeof PROVIDERS)[number];
 export interface GolemConfig {
   provider: Provider;
   model: string;
+  maxContextTokens: number;
 }
 
-const DEFAULTS: GolemConfig = {
+const DEFAULTS: Omit<GolemConfig, "maxContextTokens"> = {
   provider: "openai",
   model: "gpt-4o",
+};
+
+const CONTEXT_LIMITS: Record<string, number> = {
+  openai: 128_000,
+  anthropic: 200_000,
+  google: 1_000_000,
+  ollama: 128_000,
 };
 
 const API_KEY_ENV: Record<Provider, string | null> = {
@@ -25,6 +33,8 @@ function parseArgs(argv: string[]): Partial<GolemConfig> {
       result.provider = argv[++i] as Provider;
     } else if (argv[i] === "--model" && argv[i + 1]) {
       result.model = argv[++i];
+    } else if (argv[i] === "--max-context-tokens" && argv[i + 1]) {
+      result.maxContextTokens = parseInt(argv[++i], 10);
     }
   }
   return result;
@@ -34,6 +44,7 @@ function parseEnv(env: Record<string, string | undefined>): Partial<GolemConfig>
   const result: Partial<GolemConfig> = {};
   if (env.GOLEM_PROVIDER) result.provider = env.GOLEM_PROVIDER as Provider;
   if (env.GOLEM_MODEL) result.model = env.GOLEM_MODEL;
+  if (env.GOLEM_MAX_CONTEXT_TOKENS) result.maxContextTokens = parseInt(env.GOLEM_MAX_CONTEXT_TOKENS, 10);
   return result;
 }
 
@@ -49,9 +60,12 @@ export function resolveConfig(
   const fromArgs = parseArgs(argv);
   const fromEnv = parseEnv(env);
 
+  const provider = fromArgs.provider ?? fromEnv.provider ?? DEFAULTS.provider;
+
   const config: GolemConfig = {
-    provider: fromArgs.provider ?? fromEnv.provider ?? DEFAULTS.provider,
+    provider,
     model: fromArgs.model ?? fromEnv.model ?? DEFAULTS.model,
+    maxContextTokens: fromArgs.maxContextTokens ?? fromEnv.maxContextTokens ?? CONTEXT_LIMITS[provider] ?? 128_000,
   };
 
   if (!PROVIDERS.includes(config.provider)) {
