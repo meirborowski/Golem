@@ -25,6 +25,7 @@ import { createApplyDiffTool } from "./applyDiff.js";
 import { createGitBranchTool } from "./gitBranch.js";
 import { createGitStashTool } from "./gitStash.js";
 import { createThinkTool } from "./think.js";
+import { createSearchReplaceTool } from "./searchReplace.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -56,6 +57,7 @@ export function createTools(
     searchFiles: createSearchFilesTool(fs),
     findFiles: createFindFilesTool(fs),
     getSymbolDefinition: createGetSymbolDefinitionTool(fs),
+    searchReplace: createSearchReplaceTool(fs, context),
 
     // Shell execution
     executeCommand: createExecuteCommandTool(exec, cwd),
