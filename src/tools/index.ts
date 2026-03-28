@@ -24,6 +24,7 @@ import { createWebFetchTool } from "./webFetch.js";
 import { createApplyDiffTool } from "./applyDiff.js";
 import { createGitBranchTool } from "./gitBranch.js";
 import { createGitStashTool } from "./gitStash.js";
+import { createThinkTool } from "./think.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -69,5 +70,8 @@ export function createTools(
 
     // Web
     webFetch: createWebFetchTool(),
+
+    // Reasoning
+    think: createThinkTool(),
   };
 }
