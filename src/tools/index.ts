@@ -26,6 +26,8 @@ import { createGitBranchTool } from "./gitBranch.js";
 import { createGitStashTool } from "./gitStash.js";
 import { createThinkTool } from "./think.js";
 import { createSearchReplaceTool } from "./searchReplace.js";
+import { createGitShowTool } from "./gitShow.js";
+import { createGitBlameTool } from "./gitBlame.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -69,6 +71,8 @@ export function createTools(
     gitCommit: createGitCommitTool(exec, cwd),
     gitBranch: createGitBranchTool(exec, cwd),
     gitStash: createGitStashTool(exec, cwd),
+    gitShow: createGitShowTool(exec, cwd),
+    gitBlame: createGitBlameTool(exec, cwd),
 
     // Web
     webFetch: createWebFetchTool(),
