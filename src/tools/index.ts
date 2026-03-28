@@ -28,6 +28,7 @@ import { createThinkTool } from "./think.js";
 import { createSearchReplaceTool } from "./searchReplace.js";
 import { createGitShowTool } from "./gitShow.js";
 import { createGitBlameTool } from "./gitBlame.js";
+import { createRunTestsTool } from "./runTests.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -63,6 +64,9 @@ export function createTools(
 
     // Shell execution
     executeCommand: createExecuteCommandTool(exec, cwd),
+
+    // Testing
+    runTests: createRunTestsTool(exec, fs, cwd),
 
     // Git
     gitStatus: createGitStatusTool(exec, cwd),
