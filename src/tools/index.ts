@@ -29,6 +29,7 @@ import { createSearchReplaceTool } from "./searchReplace.js";
 import { createGitShowTool } from "./gitShow.js";
 import { createGitBlameTool } from "./gitBlame.js";
 import { createRunTestsTool } from "./runTests.js";
+import { createListSymbolsTool } from "./listSymbols.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -60,6 +61,7 @@ export function createTools(
     searchFiles: createSearchFilesTool(fs),
     findFiles: createFindFilesTool(fs),
     getSymbolDefinition: createGetSymbolDefinitionTool(fs),
+    listSymbols: createListSymbolsTool(fs),
     searchReplace: createSearchReplaceTool(fs, context),
 
     // Shell execution
