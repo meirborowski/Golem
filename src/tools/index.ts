@@ -30,6 +30,7 @@ import { createGitShowTool } from "./gitShow.js";
 import { createGitBlameTool } from "./gitBlame.js";
 import { createRunTestsTool } from "./runTests.js";
 import { createListSymbolsTool } from "./listSymbols.js";
+import { createDiagnosticsTool } from "./diagnostics.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -67,8 +68,9 @@ export function createTools(
     // Shell execution
     executeCommand: createExecuteCommandTool(exec, cwd),
 
-    // Testing
+    // Testing & diagnostics
     runTests: createRunTestsTool(exec, fs, cwd),
+    diagnostics: createDiagnosticsTool(exec, fs, cwd),
 
     // Git
     gitStatus: createGitStatusTool(exec, cwd),
