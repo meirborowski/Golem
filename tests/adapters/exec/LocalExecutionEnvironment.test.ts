@@ -21,8 +21,9 @@ describe("LocalExecutionEnvironment", () => {
   });
 
   it("respects cwd parameter", async () => {
-    const result = await exec.execute("node -e \"process.stdout.write(process.cwd())\"", process.cwd());
-    expect(result.stdout).toBe(process.cwd());
+    const cmd = process.platform === "win32" ? "cd" : "pwd";
+    const result = await exec.execute(cmd, process.cwd());
+    expect(result.stdout.trim()).toBe(process.cwd());
     expect(result.exitCode).toBe(0);
   });
 });
