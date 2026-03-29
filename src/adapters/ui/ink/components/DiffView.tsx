@@ -7,6 +7,31 @@ interface DiffViewProps {
   change: FileChange;
 }
 
+export function diffStats(change: FileChange): { added: number; removed: number } {
+  if (change.operation === "create") {
+    const lines = (change.newContent ?? "").split("\n").filter((l) => l.length > 0);
+    return { added: lines.length, removed: 0 };
+  }
+  if (change.operation === "delete") {
+    const lines = (change.originalContent ?? "").split("\n").filter((l) => l.length > 0);
+    return { added: 0, removed: lines.length };
+  }
+  // modify
+  const patch = createTwoFilesPatch(
+    change.filePath,
+    change.filePath,
+    change.originalContent ?? "",
+    change.newContent ?? "",
+  );
+  let added = 0;
+  let removed = 0;
+  for (const line of patch.split("\n").slice(4)) {
+    if (line.startsWith("+")) added++;
+    else if (line.startsWith("-")) removed++;
+  }
+  return { added, removed };
+}
+
 export function DiffView({ change }: DiffViewProps) {
   const label = `[${change.operation.toUpperCase()}] ${change.filePath}`;
 
@@ -14,6 +39,7 @@ export function DiffView({ change }: DiffViewProps) {
     return (
       <Box flexDirection="column">
         <Text color="red" bold>{label}</Text>
+        {change.description && <Text dimColor>  {change.description}</Text>}
       </Box>
     );
   }
@@ -23,6 +49,7 @@ export function DiffView({ change }: DiffViewProps) {
     return (
       <Box flexDirection="column">
         <Text color="green" bold>{label}</Text>
+        {change.description && <Text dimColor>  {change.description}</Text>}
         {lines.slice(0, 30).map((line, i) => (
           <Text key={i} color="green">+ {line}</Text>
         ))}
@@ -48,6 +75,7 @@ export function DiffView({ change }: DiffViewProps) {
   return (
     <Box flexDirection="column">
       <Text color="yellow" bold>{label}</Text>
+      {change.description && <Text dimColor>  {change.description}</Text>}
       {diffLines.slice(0, 50).map((line, i) => {
         if (line.startsWith("+")) return <Text key={i} color="green">{line}</Text>;
         if (line.startsWith("-")) return <Text key={i} color="red">{line}</Text>;

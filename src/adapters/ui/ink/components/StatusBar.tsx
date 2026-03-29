@@ -13,7 +13,7 @@ const hintsMap: Record<AppState, string> = {
   idle: "enter: send  |  type 'exit' to quit",
   thinking: "waiting for model...",
   streaming: "streaming response...",
-  confirming: "y: approve all  |  n: reject  |  s: select",
+  confirming: "y: approve all \u2502 n: reject \u2502 s: select \u2502 j/k: browse",
 };
 
 export const StatusBar = React.memo(function StatusBar({ appState, modelName, workingDirectory }: StatusBarProps) {
