@@ -1,0 +1,42 @@
+{
+  "id": "fix-off-by-one",
+  "name": "Fix off-by-one error in array indexing",
+  "description": "The getLastItem function uses length instead of length-1",
+  "category": "file-editing",
+  "tags": ["bug-fix", "typescript"],
+  "task": "Fix the bug in /project/src/utils.ts -- the getLastItem function has an off-by-one error. It accesses arr[arr.length] which is out of bounds.",
+  "initialFiles": {
+    "/project/src/utils.ts": "export function getLastItem<T>(arr: T[]): T | undefined {\n  if (arr.length === 0) return undefined;\n  return arr[arr.length];\n}\n"
+  },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/utils.ts" } }]
+      },
+      {
+        "toolCalls": [{
+          "toolName": "editFile",
+          "args": {
+            "path": "/project/src/utils.ts",
+            "oldText": "return arr[arr.length];",
+            "newText": "return arr[arr.length - 1];"
+          }
+        }],
+        "text": "Fixed the off-by-one error. Changed `arr[arr.length]` to `arr[arr.length - 1]`."
+      }
+    ]
+  },
+  "expectations": [
+    {
+      "type": "file-contains",
+      "filePath": "/project/src/utils.ts",
+      "expected": "arr[arr.length - 1]",
+      "weight": 1.0
+    },
+    {
+      "type": "file-not-contains",
+      "filePath": "/project/src/utils.ts",
+      "expected": "return arr[arr.length];"
+    }
+  ]
+}

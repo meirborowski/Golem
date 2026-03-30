@@ -1,0 +1,25 @@
+{
+  "id": "explain-pipeline",
+  "name": "Explain the pipeline architecture",
+  "description": "Agent should read pipeline code and explain how middleware steps are chained",
+  "category": "codebase-qa",
+  "tags": ["qa", "architecture"],
+  "task": "Read the pipeline engine code at /project/src/pipeline/engine.ts and explain how middleware steps are chained together.",
+  "initialFiles": {
+    "/project/src/pipeline/engine.ts": "import type { IPipelineStep, NextFunction } from '../core/interfaces/IPipelineStep.js';\nimport type { AgentContext } from '../core/entities/AgentContext.js';\n\nexport class PipelineEngine {\n  private steps: IPipelineStep[] = [];\n\n  register(step: IPipelineStep): void {\n    this.steps.push(step);\n  }\n\n  async run(context: AgentContext): Promise<void> {\n    let index = 0;\n    const next: NextFunction = async () => {\n      if (index < this.steps.length) {\n        const step = this.steps[index++];\n        await step.execute(context, next);\n      }\n    };\n    await next();\n  }\n}\n"
+  },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/pipeline/engine.ts" } }]
+      },
+      {
+        "text": "The PipelineEngine uses a middleware pattern to chain steps. Steps are registered in order via `register()`. When `run()` is called, it creates a recursive `next` function that maintains an index counter. Each step receives the shared context and the `next` callback. When a step calls `next()`, execution advances to the next registered step. This allows each step to run logic both before and after downstream steps, similar to Express middleware."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "response-contains", "expected": "middleware", "weight": 0.5 },
+    { "type": "response-contains", "expected": "next", "weight": 0.5 }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "create-debounce",
+  "name": "Generate a debounce utility function",
+  "description": "Create a TypeScript debounce function with proper typing",
+  "category": "code-generation",
+  "tags": ["generation", "typescript", "utility"],
+  "task": "Create a file /project/src/debounce.ts with a typed debounce function that takes a callback and delay in ms.",
+  "initialFiles": {
+    "/project/src/index.ts": "// entry point\n"
+  },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{
+          "toolName": "writeFile",
+          "args": {
+            "path": "/project/src/debounce.ts",
+            "content": "export function debounce<T extends (...args: any[]) => any>(\n  fn: T,\n  delayMs: number,\n): (...args: Parameters<T>) => void {\n  let timeoutId: ReturnType<typeof setTimeout> | null = null;\n  return (...args: Parameters<T>) => {\n    if (timeoutId !== null) clearTimeout(timeoutId);\n    timeoutId = setTimeout(() => fn(...args), delayMs);\n  };\n}\n"
+          }
+        }],
+        "text": "Created debounce.ts with a generic typed debounce function."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-exists", "filePath": "/project/src/debounce.ts" },
+    { "type": "file-contains", "filePath": "/project/src/debounce.ts", "expected": "export function debounce" },
+    { "type": "file-contains", "filePath": "/project/src/debounce.ts", "expected": "setTimeout" },
+    { "type": "file-contains", "filePath": "/project/src/debounce.ts", "expected": "clearTimeout" }
+  ]
+}

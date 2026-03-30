@@ -1,0 +1,46 @@
+{
+  "id": "rename-variable",
+  "name": "Rename variable tmp to result",
+  "description": "Rename the poorly named tmp variable to result throughout the function",
+  "category": "file-editing",
+  "tags": ["refactor", "typescript"],
+  "task": "In /project/src/calc.ts, rename the variable `tmp` to `result` for clarity.",
+  "initialFiles": {
+    "/project/src/calc.ts": "export function calculate(a: number, b: number): number {\n  const tmp = a + b;\n  console.log(tmp);\n  return tmp;\n}\n"
+  },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/calc.ts" } }]
+      },
+      {
+        "toolCalls": [{
+          "toolName": "editFile",
+          "args": {
+            "path": "/project/src/calc.ts",
+            "oldText": "const tmp = a + b;\n  console.log(tmp);\n  return tmp;",
+            "newText": "const result = a + b;\n  console.log(result);\n  return result;"
+          }
+        }],
+        "text": "Renamed `tmp` to `result` in all three occurrences."
+      }
+    ]
+  },
+  "expectations": [
+    {
+      "type": "file-contains",
+      "filePath": "/project/src/calc.ts",
+      "expected": "const result = a + b;"
+    },
+    {
+      "type": "file-not-contains",
+      "filePath": "/project/src/calc.ts",
+      "expected": "tmp"
+    },
+    {
+      "type": "file-contains",
+      "filePath": "/project/src/calc.ts",
+      "expected": "return result;"
+    }
+  ]
+}

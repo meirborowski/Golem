@@ -5,3 +5,4 @@ dist/
 coverage/
 *.log
 .golem-debug.jsonl
+tests/evals/results/

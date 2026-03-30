@@ -15,7 +15,9 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval": "vitest run tests/evals/",
+    "eval:real": "GOLEM_EVAL_MODE=real vitest run tests/evals/"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
