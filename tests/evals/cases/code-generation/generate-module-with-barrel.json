@@ -1,0 +1,41 @@
+{
+  "id": "generate-module-with-barrel",
+  "name": "Generate validator module with barrel export",
+  "description": "Create a validators directory with email and phone validators plus an index barrel file",
+  "category": "code-generation",
+  "tags": ["generation", "typescript", "module-structure"],
+  "task": "Create a /project/src/validators/ module with: 1) email.ts that exports a validateEmail function, 2) phone.ts that exports a validatePhone function, 3) index.ts barrel that re-exports everything.",
+  "initialFiles": {
+    "/project/src/index.ts": "// Main entry point\nconsole.log('App started');\n",
+    "/project/package.json": "{\"name\": \"test-project\"}\n"
+  },
+  "agentConfig": { "maxSteps": 10 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "createDirectory", "args": { "path": "/project/src/validators" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "writeFile", "args": { "path": "/project/src/validators/email.ts", "content": "const EMAIL_REGEX = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nexport function validateEmail(email: string): boolean {\n  if (!email || typeof email !== 'string') return false;\n  return EMAIL_REGEX.test(email.trim());\n}\n\nexport function normalizeEmail(email: string): string {\n  return email.trim().toLowerCase();\n}\n" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "writeFile", "args": { "path": "/project/src/validators/phone.ts", "content": "const PHONE_REGEX = /^\\+?[1-9]\\d{6,14}$/;\n\nexport function validatePhone(phone: string): boolean {\n  if (!phone || typeof phone !== 'string') return false;\n  const cleaned = phone.replace(/[\\s\\-()]/g, '');\n  return PHONE_REGEX.test(cleaned);\n}\n\nexport function formatPhone(phone: string): string {\n  const cleaned = phone.replace(/[\\s\\-()]/g, '');\n  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;\n}\n" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "writeFile", "args": { "path": "/project/src/validators/index.ts", "content": "export { validateEmail, normalizeEmail } from './email';\nexport { validatePhone, formatPhone } from './phone';\n" } }],
+        "text": "Created the validators module with email.ts, phone.ts, and index.ts barrel export."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-exists", "filePath": "/project/src/validators/email.ts" },
+    { "type": "file-exists", "filePath": "/project/src/validators/phone.ts" },
+    { "type": "file-exists", "filePath": "/project/src/validators/index.ts" },
+    { "type": "file-contains", "filePath": "/project/src/validators/email.ts", "expected": "export function validateEmail" },
+    { "type": "file-contains", "filePath": "/project/src/validators/phone.ts", "expected": "export function validatePhone" },
+    { "type": "file-contains", "filePath": "/project/src/validators/index.ts", "expected": "validateEmail" },
+    { "type": "file-contains", "filePath": "/project/src/validators/index.ts", "expected": "validatePhone" },
+    { "type": "file-contains", "filePath": "/project/src/validators/index.ts", "expected": "from './email'" },
+    { "type": "file-contains", "filePath": "/project/src/validators/index.ts", "expected": "from './phone'" }
+  ]
+}

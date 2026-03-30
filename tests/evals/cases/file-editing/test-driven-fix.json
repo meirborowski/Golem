@@ -1,0 +1,47 @@
+{
+  "id": "test-driven-fix",
+  "name": "Fix bug discovered by failing tests",
+  "description": "Run tests, see failure, read code, fix the bug, re-run tests to confirm they pass",
+  "category": "file-editing",
+  "tags": ["bug-fix", "testing", "tdd", "multi-step"],
+  "task": "Run the project tests. If any fail, read the relevant source code, fix the bug, and re-run the tests to confirm they pass.",
+  "initialFiles": {
+    "/project/src/stack.ts": "export class Stack<T> {\n  private items: T[] = [];\n\n  push(item: T): void {\n    this.items.push(item);\n  }\n\n  pop(): T | undefined {\n    return this.items.shift();\n  }\n\n  peek(): T | undefined {\n    return this.items[this.items.length - 1];\n  }\n\n  get size(): number {\n    return this.items.length;\n  }\n\n  isEmpty(): boolean {\n    return this.items.length === 0;\n  }\n}\n",
+    "/project/package.json": "{\"name\": \"test-project\", \"scripts\": {\"test\": \"vitest run\"}}\n"
+  },
+  "mockCommandResponses": [
+    {
+      "stdout": "FAIL  tests/stack.test.ts\n  Stack\n    ✓ push adds items (2ms)\n    ✗ pop removes last item (3ms)\n      Expected: 3\n      Received: 1\n      Stack.pop should remove and return the LAST item (LIFO), not the first.\n    ✓ peek returns last item without removing (1ms)\n\n Tests  1 failed | 2 passed (3)\n",
+      "stderr": "",
+      "exitCode": 1
+    },
+    {
+      "stdout": " PASS  tests/stack.test.ts\n  Stack\n    ✓ push adds items (1ms)\n    ✓ pop removes last item (2ms)\n    ✓ peek returns last item without removing (1ms)\n\n Tests  3 passed (3)\n",
+      "stderr": "",
+      "exitCode": 0
+    }
+  ],
+  "agentConfig": { "maxSteps": 10 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "runTests", "args": {} }]
+      },
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/stack.ts" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/stack.ts", "oldText": "return this.items.shift();", "newText": "return this.items.pop();" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "runTests", "args": {} }],
+        "text": "Fixed the bug: `pop()` was using `Array.shift()` (removes first element) instead of `Array.pop()` (removes last element). A Stack is LIFO, so it should remove from the end. All 3 tests now pass."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-contains", "filePath": "/project/src/stack.ts", "expected": "return this.items.pop();" },
+    { "type": "file-not-contains", "filePath": "/project/src/stack.ts", "expected": "this.items.shift()" },
+    { "type": "response-contains", "expected": "pass" }
+  ]
+}

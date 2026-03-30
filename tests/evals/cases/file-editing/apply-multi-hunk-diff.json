@@ -1,0 +1,39 @@
+{
+  "id": "apply-multi-hunk-diff",
+  "name": "Apply multi-hunk diff to add error handling and logging",
+  "description": "Use applyDiff with multiple hunks to add try/catch error handling and logging to a service file",
+  "category": "file-editing",
+  "tags": ["diff", "error-handling", "multi-hunk"],
+  "task": "Read /project/src/service.ts and apply a diff to add error handling with try/catch around the database calls, and add logging before each operation.",
+  "initialFiles": {
+    "/project/src/service.ts": "import { db } from './db';\n\nexport class UserService {\n  async getUser(id: string) {\n    const user = await db.findById(id);\n    return user;\n  }\n\n  async createUser(name: string, email: string) {\n    const user = await db.create({ name, email });\n    return user;\n  }\n\n  async deleteUser(id: string) {\n    await db.delete(id);\n  }\n}\n"
+  },
+  "agentConfig": { "maxSteps": 10 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/service.ts" } }]
+      },
+      {
+        "toolCalls": [{
+          "toolName": "applyDiff",
+          "args": {
+            "path": "/project/src/service.ts",
+            "diff": "@@ -1,4 +1,5 @@\n import { db } from './db';\n+import { logger } from './logger';\n \n export class UserService {\n   async getUser(id: string) {\n@@ -4,7 +5,12 @@\n export class UserService {\n   async getUser(id: string) {\n-    const user = await db.findById(id);\n-    return user;\n+    logger.info('Getting user', { id });\n+    try {\n+      const user = await db.findById(id);\n+      return user;\n+    } catch (error) {\n+      logger.error('Failed to get user', { id, error });\n+      throw error;\n+    }\n   }\n@@ -9,8 +15,13 @@\n \n   async createUser(name: string, email: string) {\n-    const user = await db.create({ name, email });\n-    return user;\n+    logger.info('Creating user', { name, email });\n+    try {\n+      const user = await db.create({ name, email });\n+      return user;\n+    } catch (error) {\n+      logger.error('Failed to create user', { name, email, error });\n+      throw error;\n+    }\n   }\n"
+          }
+        }],
+        "text": "Applied 3 hunks: added logger import, wrapped getUser and createUser in try/catch with logging."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "import { logger } from './logger';" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "logger.info('Getting user'" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "try {" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "} catch (error) {" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "logger.error('Failed to get user'" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "logger.info('Creating user'" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "async getUser(id: string)" },
+    { "type": "file-contains", "filePath": "/project/src/service.ts", "expected": "async deleteUser(id: string)" }
+  ]
+}

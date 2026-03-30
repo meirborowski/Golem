@@ -1,0 +1,32 @@
+{
+  "id": "search-replace-console-log",
+  "name": "Replace console.log with logger.info across codebase",
+  "description": "Use searchReplace to replace all console.log calls with logger.info across multiple files",
+  "category": "file-editing",
+  "tags": ["refactor", "search-replace", "multi-file"],
+  "task": "Replace all `console.log(` calls with `logger.info(` across the codebase in /project/src/. First search to see the scope, then do the replacement.",
+  "initialFiles": {
+    "/project/src/server.ts": "import express from 'express';\n\nconst app = express();\n\napp.listen(3000, () => {\n  console.log('Server started on port 3000');\n});\n\napp.get('/', (req, res) => {\n  console.log('Request received:', req.url);\n  res.send('OK');\n});\n",
+    "/project/src/db.ts": "export async function connect() {\n  console.log('Connecting to database...');\n  // connection logic\n  console.log('Connected successfully');\n}\n\nexport async function query(sql: string) {\n  console.log('Executing query:', sql);\n  return [];\n}\n",
+    "/project/src/auth.ts": "export function login(user: string) {\n  console.log('Login attempt:', user);\n  return { token: 'abc123' };\n}\n"
+  },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "searchFiles", "args": { "pattern": "console\\.log\\(", "path": "/project/src" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "searchReplace", "args": { "pattern": "console\\.log\\(", "replacement": "logger.info(", "path": "/project/src" } }],
+        "text": "Replaced all 6 console.log calls with logger.info across 3 files."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-not-contains", "filePath": "/project/src/server.ts", "expected": "console.log(" },
+    { "type": "file-contains", "filePath": "/project/src/server.ts", "expected": "logger.info(" },
+    { "type": "file-not-contains", "filePath": "/project/src/db.ts", "expected": "console.log(" },
+    { "type": "file-contains", "filePath": "/project/src/db.ts", "expected": "logger.info(" },
+    { "type": "file-not-contains", "filePath": "/project/src/auth.ts", "expected": "console.log(" },
+    { "type": "file-contains", "filePath": "/project/src/auth.ts", "expected": "logger.info(" }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "move-and-restructure",
+  "name": "Move and restructure files with import updates",
+  "description": "Move a utility file to a new directory and update all imports that reference it",
+  "category": "file-editing",
+  "tags": ["refactor", "move", "imports", "multi-step"],
+  "task": "Move /project/src/helpers.ts to /project/src/utils/helpers.ts and update all imports in other files that reference it.",
+  "initialFiles": {
+    "/project/src/helpers.ts": "export function formatDate(date: Date): string {\n  return date.toISOString().split('T')[0];\n}\n\nexport function capitalize(str: string): string {\n  return str.charAt(0).toUpperCase() + str.slice(1);\n}\n",
+    "/project/src/app.ts": "import { formatDate } from './helpers';\n\nexport function renderDate(): string {\n  return formatDate(new Date());\n}\n",
+    "/project/src/components/header.ts": "import { capitalize } from '../helpers';\n\nexport function renderTitle(title: string): string {\n  return `<h1>${capitalize(title)}</h1>`;\n}\n"
+  },
+  "agentConfig": { "maxSteps": 10 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "readFile", "args": { "path": "/project/src/helpers.ts" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "searchFiles", "args": { "pattern": "from ['\"]\\./helpers['\"]|from ['\"]\\.\\./(helpers|src/helpers)['\"]", "path": "/project/src" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "createDirectory", "args": { "path": "/project/src/utils" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "moveFile", "args": { "source": "/project/src/helpers.ts", "destination": "/project/src/utils/helpers.ts" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/app.ts", "oldText": "import { formatDate } from './helpers';", "newText": "import { formatDate } from './utils/helpers';" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/components/header.ts", "oldText": "import { capitalize } from '../helpers';", "newText": "import { capitalize } from '../utils/helpers';" } }],
+        "text": "Moved helpers.ts to utils/helpers.ts and updated imports in app.ts and components/header.ts."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-not-exists", "filePath": "/project/src/helpers.ts" },
+    { "type": "file-exists", "filePath": "/project/src/utils/helpers.ts" },
+    { "type": "file-contains", "filePath": "/project/src/utils/helpers.ts", "expected": "export function formatDate" },
+    { "type": "file-contains", "filePath": "/project/src/utils/helpers.ts", "expected": "export function capitalize" },
+    { "type": "file-contains", "filePath": "/project/src/app.ts", "expected": "from './utils/helpers'" },
+    { "type": "file-not-contains", "filePath": "/project/src/app.ts", "expected": "from './helpers'" },
+    { "type": "file-contains", "filePath": "/project/src/components/header.ts", "expected": "from '../utils/helpers'" },
+    { "type": "file-not-contains", "filePath": "/project/src/components/header.ts", "expected": "from '../helpers'" }
+  ]
+}

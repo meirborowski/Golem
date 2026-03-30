@@ -1,0 +1,40 @@
+{
+  "id": "explore-and-summarize",
+  "name": "Explore codebase structure and summarize architecture",
+  "description": "Navigate a multi-directory project, read key files, and provide an architecture summary",
+  "category": "codebase-qa",
+  "tags": ["qa", "architecture", "exploration", "multi-step"],
+  "task": "Explore the project structure at /project/ and summarize the architecture. What are the main modules, what does each one do, and how do they connect?",
+  "initialFiles": {
+    "/project/src/index.ts": "import { createApp } from './app';\nimport { DatabaseAdapter } from './adapters/database';\nimport { ApiRouter } from './routes/api';\n\nconst db = new DatabaseAdapter();\nconst router = new ApiRouter(db);\nconst app = createApp(router);\napp.listen(3000);\n",
+    "/project/src/app.ts": "import type { Router } from './routes/types';\n\nexport function createApp(router: Router) {\n  return {\n    listen: (port: number) => console.log(`Listening on ${port}`),\n    router,\n  };\n}\n",
+    "/project/src/adapters/database.ts": "export class DatabaseAdapter {\n  async query(sql: string): Promise<any[]> {\n    return [];\n  }\n  async execute(sql: string): Promise<void> {}\n}\n",
+    "/project/src/routes/api.ts": "import type { DatabaseAdapter } from '../adapters/database';\n\nexport class ApiRouter {\n  constructor(private db: DatabaseAdapter) {}\n\n  async getUsers() {\n    return this.db.query('SELECT * FROM users');\n  }\n\n  async createUser(name: string) {\n    await this.db.execute(`INSERT INTO users (name) VALUES ('${name}')`);\n  }\n}\n",
+    "/project/src/routes/types.ts": "export interface Router {\n  getUsers(): Promise<any[]>;\n  createUser(name: string): Promise<void>;\n}\n",
+    "/project/src/utils/logger.ts": "export const logger = {\n  info: (msg: string, data?: any) => console.log(`[INFO] ${msg}`, data),\n  error: (msg: string, data?: any) => console.error(`[ERROR] ${msg}`, data),\n};\n"
+  },
+  "agentConfig": { "maxSteps": 10 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "directoryTree", "args": { "path": "/project/src" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "readMultipleFiles", "args": { "paths": ["/project/src/index.ts", "/project/src/app.ts", "/project/src/routes/types.ts"] } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "readMultipleFiles", "args": { "paths": ["/project/src/adapters/database.ts", "/project/src/routes/api.ts", "/project/src/utils/logger.ts"] } }]
+      },
+      {
+        "text": "The project follows a layered architecture with three main modules:\n\n1. **Entry point** (index.ts): Wires up dependencies — creates a DatabaseAdapter, passes it to ApiRouter, and starts the app.\n\n2. **Adapters** (adapters/database.ts): Contains the DatabaseAdapter class that handles SQL query execution. This is the data access layer.\n\n3. **Routes** (routes/api.ts, routes/types.ts): The ApiRouter class handles HTTP route logic, using dependency injection to receive the database adapter. The Router interface in types.ts defines the contract.\n\n4. **Utils** (utils/logger.ts): Shared utilities like the logger.\n\nThe flow is: index.ts creates adapters → injects into routes → creates app → starts listening. Dependencies flow inward via constructor injection."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "response-contains", "expected": "DatabaseAdapter" },
+    { "type": "response-contains", "expected": "ApiRouter" },
+    { "type": "response-contains", "expected": "injection" },
+    { "type": "response-contains", "expected": "adapter" },
+    { "type": "response-contains", "expected": "route" }
+  ]
+}

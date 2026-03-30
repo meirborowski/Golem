@@ -1,0 +1,42 @@
+{
+  "id": "multi-file-rename-refactor",
+  "name": "Rename interface across multiple files",
+  "description": "Rename Config interface to AppConfig across 3 interconnected files with imports and type usage",
+  "category": "file-editing",
+  "tags": ["refactor", "typescript", "multi-file"],
+  "task": "Rename the `Config` interface to `AppConfig` across all files in /project/src/. Make sure to update the interface definition, imports, and all type references.",
+  "initialFiles": {
+    "/project/src/types.ts": "export interface Config {\n  name: string;\n  port: number;\n  debug: boolean;\n}\n\nexport type ConfigKey = keyof Config;\n",
+    "/project/src/app.ts": "import { Config } from './types';\n\nexport class App {\n  private config: Config;\n\n  constructor(config: Config) {\n    this.config = config;\n  }\n\n  getPort(): number {\n    return this.config.port;\n  }\n}\n",
+    "/project/src/utils.ts": "import type { Config } from './types';\n\nexport function validateConfig(config: Config): boolean {\n  return config.name.length > 0 && config.port > 0;\n}\n\nexport function mergeConfigs(base: Config, override: Partial<Config>): Config {\n  return { ...base, ...override };\n}\n"
+  },
+  "agentConfig": { "maxSteps": 15 },
+  "mockLlmResponse": {
+    "turns": [
+      {
+        "toolCalls": [{ "toolName": "searchFiles", "args": { "pattern": "\\bConfig\\b", "path": "/project/src" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/types.ts", "oldText": "export interface Config {\n  name: string;\n  port: number;\n  debug: boolean;\n}\n\nexport type ConfigKey = keyof Config;", "newText": "export interface AppConfig {\n  name: string;\n  port: number;\n  debug: boolean;\n}\n\nexport type ConfigKey = keyof AppConfig;" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/app.ts", "oldText": "import { Config } from './types';\n\nexport class App {\n  private config: Config;\n\n  constructor(config: Config) {", "newText": "import { AppConfig } from './types';\n\nexport class App {\n  private config: AppConfig;\n\n  constructor(config: AppConfig) {" } }]
+      },
+      {
+        "toolCalls": [{ "toolName": "editFile", "args": { "path": "/project/src/utils.ts", "oldText": "import type { Config } from './types';\n\nexport function validateConfig(config: Config): boolean {\n  return config.name.length > 0 && config.port > 0;\n}\n\nexport function mergeConfigs(base: Config, override: Partial<Config>): Config {", "newText": "import type { AppConfig } from './types';\n\nexport function validateConfig(config: AppConfig): boolean {\n  return config.name.length > 0 && config.port > 0;\n}\n\nexport function mergeConfigs(base: AppConfig, override: Partial<AppConfig>): AppConfig {" } }]
+      },
+      {
+        "text": "Renamed `Config` to `AppConfig` across all 3 files: updated the interface definition, the type alias, all imports, and all type references."
+      }
+    ]
+  },
+  "expectations": [
+    { "type": "file-contains", "filePath": "/project/src/types.ts", "expected": "export interface AppConfig {" },
+    { "type": "file-contains", "filePath": "/project/src/types.ts", "expected": "keyof AppConfig" },
+    { "type": "file-not-contains", "filePath": "/project/src/types.ts", "expected": "interface Config {" },
+    { "type": "file-contains", "filePath": "/project/src/app.ts", "expected": "import { AppConfig }" },
+    { "type": "file-not-contains", "filePath": "/project/src/app.ts", "expected": ": Config" },
+    { "type": "file-contains", "filePath": "/project/src/utils.ts", "expected": "config: AppConfig" },
+    { "type": "file-not-contains", "filePath": "/project/src/utils.ts", "expected": "Partial<Config>" }
+  ]
+}
