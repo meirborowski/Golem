@@ -31,6 +31,7 @@ import { createGitBlameTool } from "./gitBlame.js";
 import { createRunTestsTool } from "./runTests.js";
 import { createListSymbolsTool } from "./listSymbols.js";
 import { createDiagnosticsTool } from "./diagnostics.js";
+import { createFileHistoryTool } from "./fileHistory.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -81,6 +82,7 @@ export function createTools(
     gitStash: createGitStashTool(exec, cwd),
     gitShow: createGitShowTool(exec, cwd),
     gitBlame: createGitBlameTool(exec, cwd),
+    fileHistory: createFileHistoryTool(exec, cwd),
 
     // Web
     webFetch: createWebFetchTool(),
