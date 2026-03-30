@@ -35,6 +35,7 @@ import { createFileHistoryTool } from "./fileHistory.js";
 import { createUndoChangeTool } from "./undoChange.js";
 import { createAskUserTool } from "./askUser.js";
 import { createAskUserChoiceTool } from "./askUserChoice.js";
+import { createTodoWriteTool } from "./todoWrite.js";
 import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 
 export function createTools(
@@ -99,5 +100,8 @@ export function createTools(
     // User interaction
     askUser: createAskUserTool(ui),
     askUserChoice: createAskUserChoiceTool(ui),
+
+    // Task tracking
+    todoWrite: createTodoWriteTool(context, ui),
   };
 }

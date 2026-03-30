@@ -64,6 +64,7 @@ export const toolDisplayNames: Record<string, string> = {
   webFetch: "Fetch URL",
   askUser: "Ask user",
   askUserChoice: "Ask user",
+  todoWrite: "Update todos",
 };
 
 export const toolKeyArgExtractors: Record<string, (args: Record<string, unknown>) => string> = {
@@ -90,6 +91,13 @@ export const toolKeyArgExtractors: Record<string, (args: Record<string, unknown>
   webFetch: (a) => truncate(String(a.url ?? ""), 50),
   askUser: (a) => truncate(String(a.question ?? ""), 50),
   askUserChoice: (a) => truncate(String(a.question ?? ""), 50),
+  todoWrite: (a) => {
+    const todos = a.todos as Array<{ status: string }> | undefined;
+    if (!todos) return "";
+    const ip = todos.filter((t) => t.status === "in_progress").length;
+    const done = todos.filter((t) => t.status === "completed").length;
+    return `${done}/${todos.length} done${ip ? `, ${ip} active` : ""}`;
+  },
 };
 
 export const markdownTheme = {

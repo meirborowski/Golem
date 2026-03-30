@@ -63,4 +63,8 @@ export class UIBridge extends EventEmitter {
   stopProgress(): void {
     this.emit("progress-stop");
   }
+
+  pushTodos(items: unknown[]): void {
+    this.emit("todos", items);
+  }
 }

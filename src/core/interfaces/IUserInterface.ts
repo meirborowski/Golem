@@ -1,4 +1,5 @@
 import type { FileChange } from "../entities/FileChange.js";
+import type { TodoItem } from "../entities/TodoItem.js";
 
 export interface IUserInterface {
   prompt(message?: string): Promise<string>;
@@ -10,4 +11,5 @@ export interface IUserInterface {
   displayToolCall(toolName: string, args: Record<string, unknown>): void;
   displayToolResult(toolName: string, result: string): void;
   showProgress(message: string): () => void;
+  updateTodos(items: TodoItem[]): void;
 }

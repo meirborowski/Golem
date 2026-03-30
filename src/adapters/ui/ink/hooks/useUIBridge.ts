@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { UIBridge, PromptRequest, ConfirmRequest } from "../UIBridge.js";
 import type { FileChange } from "#core/entities/FileChange.js";
+import type { TodoItem } from "#core/entities/TodoItem.js";
 import { toolDisplayNames, toolKeyArgExtractors } from "../theme.js";
 
 export type ToolCallEntry = {
@@ -45,6 +46,7 @@ export function useUIBridge(bridge: UIBridge) {
   const [progressMessage, setProgressMessage] = useState("");
   const [promptRequest, setPromptRequest] = useState<PromptRequest | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
   useEffect(() => {
     const onDisplay = (msg: string) => {
@@ -148,6 +150,10 @@ export function useUIBridge(bridge: UIBridge) {
       });
     };
 
+    const onTodos = (items: TodoItem[]) => {
+      setTodos(items);
+    };
+
     const onProgressStart = (msg: string) => {
       setProgressMessage(msg);
       setAppState("thinking");
@@ -167,6 +173,7 @@ export function useUIBridge(bridge: UIBridge) {
     bridge.on("tool-result", onToolResult);
     bridge.on("progress-start", onProgressStart);
     bridge.on("progress-stop", onProgressStop);
+    bridge.on("todos", onTodos);
 
     return () => {
       if (flushTimerRef.current) {
@@ -183,6 +190,7 @@ export function useUIBridge(bridge: UIBridge) {
       bridge.off("tool-result", onToolResult);
       bridge.off("progress-start", onProgressStart);
       bridge.off("progress-stop", onProgressStop);
+      bridge.off("todos", onTodos);
     };
   }, [bridge]);
 
@@ -210,6 +218,7 @@ export function useUIBridge(bridge: UIBridge) {
     pendingToolCalls,
     promptRequest,
     confirmRequest,
+    todos,
     submitPrompt,
     submitConfirmation,
   };

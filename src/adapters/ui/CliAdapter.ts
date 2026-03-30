@@ -71,6 +71,8 @@ export class CliAdapter implements IUserInterface {
     };
   }
 
+  updateTodos(): void {}
+
   close(): void {
     this.rl.close();
   }

@@ -9,6 +9,7 @@ import { GolemSpinner } from "./GolemSpinner.js";
 import { PromptInput } from "./PromptInput.js";
 import { ChangeConfirmation } from "./ChangeConfirmation.js";
 import { PendingToolCallLine } from "./PendingToolCallLine.js";
+import { TodoList } from "./TodoList.js";
 import { StatusBar } from "./StatusBar.js";
 
 interface GolemAppProps {
@@ -25,6 +26,7 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
     pendingToolCalls,
     promptRequest,
     confirmRequest,
+    todos,
     submitPrompt,
     submitConfirmation,
   } = useUIBridge(bridge);
@@ -32,6 +34,8 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
   return (
     <Box flexDirection="column">
       <MessageLog messages={messages} config={config} />
+
+      <TodoList items={todos} />
 
       {pendingToolCalls.map((tc, i) => (
         <PendingToolCallLine key={`pending-${i}`} label={tc.label} keyArg={tc.keyArg} />

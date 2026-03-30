@@ -48,4 +48,6 @@ export class MockUserInterface implements IUserInterface {
   showProgress(_message: string): () => void {
     return () => {};
   }
+
+  updateTodos(): void {}
 }

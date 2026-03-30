@@ -2,6 +2,7 @@ import React from "react";
 import { render } from "ink";
 import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 import type { FileChange } from "#core/entities/FileChange.js";
+import type { TodoItem } from "#core/entities/TodoItem.js";
 import { UIBridge } from "./UIBridge.js";
 import { GolemApp } from "./components/GolemApp.js";
 
@@ -58,6 +59,10 @@ export class InkAdapter implements IUserInterface {
   showProgress(message: string): () => void {
     this.bridge.startProgress(message);
     return () => this.bridge.stopProgress();
+  }
+
+  updateTodos(items: TodoItem[]): void {
+    this.bridge.pushTodos(items);
   }
 
   close(): void {
