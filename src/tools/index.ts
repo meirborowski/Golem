@@ -33,12 +33,16 @@ import { createListSymbolsTool } from "./listSymbols.js";
 import { createDiagnosticsTool } from "./diagnostics.js";
 import { createFileHistoryTool } from "./fileHistory.js";
 import { createUndoChangeTool } from "./undoChange.js";
+import { createAskUserTool } from "./askUser.js";
+import { createAskUserChoiceTool } from "./askUserChoice.js";
+import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 
 export function createTools(
   fs: IFileSystem,
   exec: IExecutionEnvironment,
   context: AgentContext,
   model: LanguageModel,
+  ui: IUserInterface,
 ) {
   const cwd = context.workingDirectory;
 
@@ -91,5 +95,9 @@ export function createTools(
 
     // Reasoning
     think: createThinkTool(),
+
+    // User interaction
+    askUser: createAskUserTool(ui),
+    askUserChoice: createAskUserChoiceTool(ui),
   };
 }

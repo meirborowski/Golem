@@ -13,4 +13,14 @@ describe("PromptInput", () => {
     const { lastFrame } = render(<PromptInput message="You> " onSubmit={() => {}} />);
     expect(lastFrame()!).toContain("exit");
   });
+
+  it("displays tool question above the input", () => {
+    const { lastFrame } = render(<PromptInput message="What framework?" onSubmit={() => {}} />);
+    expect(lastFrame()!).toContain("What framework?");
+  });
+
+  it("hides hint text for tool prompts", () => {
+    const { lastFrame } = render(<PromptInput message="What framework?" onSubmit={() => {}} />);
+    expect(lastFrame()!).not.toContain("exit");
+  });
 });

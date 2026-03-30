@@ -34,6 +34,7 @@ export class Agent {
       this.config.exec,
       context,
       this.config.model,
+      this.config.ui,
     );
     const tools = this.config.wrapTools ? this.config.wrapTools(rawTools) : rawTools;
 
@@ -167,7 +168,7 @@ export class Agent {
 
   private createContext(): AgentContext {
     const systemPrompt = this.config.systemPrompt ??
-      "You are Golem, an expert coding agent. You can read files, write files, list directories, and execute shell commands. Always read relevant files before making changes.";
+      "You are Golem, an expert coding agent. You can read files, write files, list directories, and execute shell commands. Always read relevant files before making changes. When you need clarification from the user, use the askUser tool for open-ended questions or askUserChoice to present a list of options — these let you pause, ask, and receive the answer before continuing. Never print questions as plain text.";
 
     return {
       messages: [{ role: "system", content: systemPrompt }],

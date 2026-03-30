@@ -62,6 +62,8 @@ export const toolDisplayNames: Record<string, string> = {
   gitBranch: "Git branch",
   gitStash: "Git stash",
   webFetch: "Fetch URL",
+  askUser: "Ask user",
+  askUserChoice: "Ask user",
 };
 
 export const toolKeyArgExtractors: Record<string, (args: Record<string, unknown>) => string> = {
@@ -86,6 +88,8 @@ export const toolKeyArgExtractors: Record<string, (args: Record<string, unknown>
   gitDiff: (a) => String(a.path ?? ""),
   gitBranch: (a) => String(a.action ?? ""),
   webFetch: (a) => truncate(String(a.url ?? ""), 50),
+  askUser: (a) => truncate(String(a.question ?? ""), 50),
+  askUserChoice: (a) => truncate(String(a.question ?? ""), 50),
 };
 
 export const markdownTheme = {
