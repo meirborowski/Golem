@@ -4,3 +4,5 @@ export type { IExecutionEnvironment, ExecutionResult } from "./IExecutionEnviron
 export type { IPipelineStep, NextFunction } from "./IPipelineStep.js";
 export type { IDebugLogger } from "./IDebugLogger.js";
 export { snapshotContext } from "./IDebugLogger.js";
+export type { IAgentRegistry } from "./IAgentRegistry.js";
+export type { ISubAgentRunner } from "./ISubAgentRunner.js";

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Agent } from "#core/agent.js";
 import { resolveConfig, displayModel } from "#core/config.js";
 import { createModel } from "#core/createModel.js";
@@ -14,6 +15,8 @@ import { FileDebugLogger } from "#adapters/debug/FileDebugLogger.js";
 import { NullDebugLogger } from "#adapters/debug/NullDebugLogger.js";
 import { DebugLoggingStep } from "#adapters/debug/DebugLoggingStep.js";
 import { wrapToolsWithLogging } from "#adapters/debug/wrapToolsWithLogging.js";
+import { FileAgentRegistry } from "#adapters/agents/FileAgentRegistry.js";
+import type { IPipelineStep } from "#core/interfaces/IPipelineStep.js";
 
 async function main() {
   const config = resolveConfig();
@@ -36,23 +39,41 @@ async function main() {
   const fs = new LocalFileSystemAdapter(process.cwd());
   const exec = new LocalExecutionEnvironment();
 
-  const prePipeline = new PipelineEngine(debugLogger);
-  if (debugLogger.isEnabled()) {
-    prePipeline.register(new DebugLoggingStep("pre-pipeline", debugLogger));
-  }
-  prePipeline.register(new ContextGatheringStep(fs, model, ui));
-  prePipeline.register(new ContextCompactionStep(model, ui, {
+  // Pipeline steps (registered by name for agent overrides)
+  const contextGathering = new ContextGatheringStep(fs, model, ui);
+  const contextCompaction = new ContextCompactionStep(model, ui, {
     maxContextTokens: config.maxContextTokens,
     compactionThreshold: 0.75,
     targetAfterCompaction: 0.50,
     protectedTurnCount: 4,
-  }));
+  });
+  const humanApproval = new HumanApprovalStep(ui);
+
+  const pipelineStepRegistry = new Map<string, IPipelineStep>();
+  pipelineStepRegistry.set("ContextGathering", contextGathering);
+  pipelineStepRegistry.set("ContextCompaction", contextCompaction);
+  pipelineStepRegistry.set("HumanApproval", humanApproval);
+
+  const prePipeline = new PipelineEngine(debugLogger);
+  if (debugLogger.isEnabled()) {
+    prePipeline.register(new DebugLoggingStep("pre-pipeline", debugLogger));
+  }
+  prePipeline.register(contextGathering);
+  prePipeline.register(contextCompaction);
 
   const postPipeline = new PipelineEngine(debugLogger);
   if (debugLogger.isEnabled()) {
     postPipeline.register(new DebugLoggingStep("post-pipeline", debugLogger));
   }
-  postPipeline.register(new HumanApprovalStep(ui));
+  postPipeline.register(humanApproval);
+
+  // Agent registry: built-in agents + project-local agents
+  const selfDir = dirname(fileURLToPath(import.meta.url));
+  const builtInAgentsDir = join(selfDir, "agents");
+  const projectAgentsDir = join(process.cwd(), "agents");
+
+  const agentRegistry = new FileAgentRegistry(builtInAgentsDir, projectAgentsDir);
+  await agentRegistry.loadAll();
 
   const agent = new Agent({
     model,
@@ -65,6 +86,11 @@ async function main() {
     wrapTools: debugLogger.isEnabled()
       ? (tools) => wrapToolsWithLogging(tools, debugLogger)
       : undefined,
+    agentRegistry,
+    pipelineStepRegistry,
+    createModelFromOverride: (provider, modelName) => {
+      return createModel({ provider: provider as "openai" | "anthropic" | "google" | "ollama", model: modelName, maxContextTokens: config.maxContextTokens });
+    },
   });
 
   await agent.run();

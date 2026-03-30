@@ -60,6 +60,17 @@ export function useUIBridge(bridge: UIBridge) {
       setStreamBuffer(streamRef.current);
     };
 
+    // Commit any accumulated streamed text to messages so it appears
+    // before tool calls in the message log.
+    const commitStreamText = () => {
+      const text = streamRef.current;
+      if (text) {
+        streamRef.current = "";
+        setStreamBuffer("");
+        setMessages((prev) => [...prev, { type: "assistant", content: text }]);
+      }
+    };
+
     const onStreamChunk = (chunk: string) => {
       streamRef.current += chunk;
       if (!isStreamingRef.current) {
@@ -98,6 +109,19 @@ export function useUIBridge(bridge: UIBridge) {
 
     const onToolCall = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) => {
       const { label, keyArg } = extractToolInfo(toolName, args);
+
+      // If text was streaming before this tool call, commit it first
+      // so it appears above the tool call in the message log.
+      if (isStreamingRef.current) {
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
+        commitStreamText();
+        isStreamingRef.current = false;
+        setAppState("thinking");
+      }
+
       setPendingToolCalls((prev) => [...prev, { rawName: toolName, label, keyArg }]);
     };
 
@@ -116,7 +140,10 @@ export function useUIBridge(bridge: UIBridge) {
           status: isError ? "error" : "success",
           resultSummary: isError ? (result.length > 120 ? result.slice(0, 120) + "..." : result) : undefined,
         };
+
+        // Commit tool result to messages immediately so Static locks it in place
         setMessages((msgs) => [...msgs, entry]);
+
         return remaining;
       });
     };

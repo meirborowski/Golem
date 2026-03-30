@@ -16,4 +16,6 @@ export interface AgentContext {
   shouldContinue: boolean;
   metadata: Record<string, unknown>;
   tokenUsage?: TokenUsage;
+  activeAgent?: string;
+  pendingHandoff?: string;
 }
