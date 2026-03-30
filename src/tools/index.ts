@@ -32,6 +32,7 @@ import { createRunTestsTool } from "./runTests.js";
 import { createListSymbolsTool } from "./listSymbols.js";
 import { createDiagnosticsTool } from "./diagnostics.js";
 import { createFileHistoryTool } from "./fileHistory.js";
+import { createUndoChangeTool } from "./undoChange.js";
 
 export function createTools(
   fs: IFileSystem,
@@ -52,6 +53,7 @@ export function createTools(
     deleteFile: createDeleteFileTool(fs, context),
     moveFile: createMoveFileTool(fs, context),
     applyDiff: createApplyDiffTool(fs, context),
+    undoChange: createUndoChangeTool(context),
 
     // Directory operations
     listDirectory: createListDirectoryTool(fs),
