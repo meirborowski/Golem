@@ -1,8 +1,8 @@
 # Golem
 
-A modular, provider-agnostic coding agent built on the [Vercel AI SDK](https://sdk.vercel.ai/) with Hexagonal Architecture.
+A modular, provider-agnostic coding agent for vibe coding, built on the [Vercel AI SDK](https://sdk.vercel.ai/) with Hexagonal Architecture and a middleware pipeline.
 
-Golem reads your intent, gathers context from your codebase, calls an LLM with tools (read/write files, run commands), and applies changes — with human approval before any writes hit disk.
+Golem reads your intent, gathers context from your codebase, calls an LLM with tools, and applies changes with human approval before any writes hit disk.
 
 ## Quick Start
 
@@ -14,35 +14,68 @@ npm run dev
 
 ## Architecture
 
-```
+```txt
 src/
-├── core/           # Domain logic and ports — no external imports (except AI SDK)
-│   ├── entities/   # AgentContext, FileChange
-│   ├── interfaces/ # IFileSystem, IUserInterface, IExecutionEnvironment, IPipelineStep
-│   └── agent.ts    # Core agent loop (generateText + tool calling)
+├── core/                  # Domain logic and ports — no external imports except AI SDK
+│   ├── entities/          # AgentContext, FileChange, TodoItem, AgentDefinition
+│   ├── interfaces/        # IFileSystem, IUserInterface, IExecutionEnvironment, IPipelineStep, etc.
+│   ├── agent.ts          # Core agent loop (streamText + stopWhen tool loop)
+│   ├── AgentRouter.ts    # Agent selection / routing
+│   ├── config.ts         # Runtime config resolution
+│   └── createModel.ts    # Provider-agnostic model creation
 │
-├── adapters/       # Infrastructure — implements core interfaces
-│   ├── fs/         # LocalFileSystemAdapter, MemoryFileSystemAdapter
-│   ├── ui/         # CliAdapter (readline)
-│   └── exec/       # LocalExecutionEnvironment (child_process)
+├── adapters/              # Infrastructure — implements core interfaces
+│   ├── fs/               # LocalFileSystemAdapter, MemoryFileSystemAdapter
+│   ├── ui/               # CliAdapter, InkAdapter + UIBridge, React/Ink UI
+│   ├── exec/              # LocalExecutionEnvironment
+│   ├── agents/           # FileAgentRegistry
+│   └── debug/            # Debug logging helpers and tool wrappers
 │
-├── pipeline/       # Middleware wrapping the agent loop
-│   ├── steps/      # ContextGatheringStep, HumanApprovalStep
-│   └── engine.ts   # Pipeline runner with next() chaining
+├── pipeline/              # Middleware wrapping the agent loop
+│   ├── steps/            # ContextGatheringStep, ContextCompactionStep, HumanApprovalStep
+│   └── engine.ts         # Pipeline runner with execute(context, next) chaining
 │
-├── tools/          # LLM tool definitions (AI SDK format with Zod schemas)
-│   ├── readFile, writeFile, listDirectory, executeCommand
-│   └── index.ts    # createTools() factory
+├── tools/                 # AI SDK tools with Zod schemas
+│   ├── file ops          # readFile, writeFile, editFile, deleteFile, moveFile, applyDiff, etc.
+│   ├── repo inspection   # listDirectory, findFiles, searchFiles, git* tools, symbols, history
+│   ├── execution         # executeCommand, runTests, diagnostics
+│   ├── agent behavior    # askUser, askUserChoice, think, delegateToAgent, handOffToAgent
+│   └── index.ts          # createTools() factory
 │
-└── index.ts        # Entry point: config, DI, startup
+└── index.ts               # Entry point: config, DI, startup
 ```
 
-### Key Design Decisions
+## How it works
 
-- **AI SDK handles LLM abstraction** — swapping providers (OpenAI, Anthropic, Ollama) is a one-line config change, not a new adapter class.
-- **File writes are staged, not immediate** — the `writeFile` tool pushes to `AgentContext.pendingChanges`. The `HumanApprovalStep` gates what gets written.
-- **Two pipelines (pre and post)** — pre-pipeline runs before the LLM call (context gathering), post-pipeline runs after (human approval).
-- **Middleware pattern** — pipeline steps use `execute(context, next)` chaining, just like Express/Koa middleware.
+1. User enters a request.
+2. A **pre-pipeline** gathers and compacts context.
+3. The agent calls the LLM with tools using **`streamText`**.
+4. The AI SDK handles the inner tool-calling loop with **`stopWhen`**.
+5. The assistant streams output to the terminal UI.
+6. A **post-pipeline** asks for human approval of staged changes.
+7. Approved changes are written to disk.
+
+## Key Design Decisions
+
+- **AI SDK handles LLM abstraction** — swapping providers is a config change, not a new adapter.
+- **`src/core` is tightly isolated** — it imports only from `ai` and project-local code.
+- **File writes are staged, not immediate** — `writeFile` adds to `AgentContext.pendingChanges`, and `HumanApprovalStep` decides what gets persisted.
+- **Pipeline middleware uses `execute(context, next)`** — the same chaining style as Express/Koa.
+- **Adapters stay thin** — business logic belongs in core and pipeline steps, not infrastructure.
+- **Terminal UI uses an imperative/declarative bridge** — `InkAdapter` talks to `UIBridge`, which is rendered by React components.
+
+## Terminal UI
+
+The terminal UI is built with Ink and React.
+
+Main pieces:
+- `GolemApp` — root state machine
+- `MessageLog` — conversation history
+- `StreamingText` — live assistant token stream
+- `PromptInput` — user input
+- `GolemSpinner` — loading indicator
+- `DiffView` — staged file diffs
+- `ChangeConfirmation` — approve/reject staged changes
 
 ## Scripts
 
@@ -56,13 +89,13 @@ src/
 
 ## Extending Golem
 
-**New LLM provider:** `npm install @ai-sdk/anthropic`, change the model in `index.ts`.
+**New LLM provider:** install the provider package and update `index.ts` config.
 
-**New tool:** Create a file in `src/tools/` using AI SDK's `tool()` with a Zod schema, register it in `createTools()`.
+**New tool:** add a file in `src/tools/` using AI SDK `tool()` + Zod, then register it in `createTools()`.
 
-**New pipeline step:** Implement `IPipelineStep` in `src/pipeline/steps/`, register in `index.ts`.
+**New pipeline step:** implement `IPipelineStep` in `src/pipeline/steps/` and register it in `src/index.ts`.
 
-**New UI:** Implement `IUserInterface` in `src/adapters/ui/`, create a new entry point that injects it.
+**New UI:** implement `IUserInterface` in `src/adapters/ui/` and create a new entry point that injects it.
 
 ## Testing
 
@@ -70,4 +103,4 @@ src/
 npm test
 ```
 
-Core logic is tested with mock adapters (`MemoryFileSystemAdapter`, `MockUserInterface`, `MockLanguageModelV3`) — no real API calls or disk writes.
+Tests use mock adapters and mock models where appropriate — no real API calls or disk writes.
