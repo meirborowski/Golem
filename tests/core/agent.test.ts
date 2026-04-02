@@ -38,6 +38,8 @@ function createAgent(opts: {
 
   const agent = new Agent({
     model,
+    provider: "openai",
+    modelName: "gpt-4o",
     fs,
     ui,
     exec,
@@ -92,6 +94,8 @@ describe("Agent", () => {
 
     const agent = new Agent({
       model,
+      provider: "openai",
+      modelName: "gpt-4o",
       fs,
       ui,
       exec: new MockExecutionEnvironment(),
@@ -103,6 +107,23 @@ describe("Agent", () => {
     await agent.run();
     expect(await fs.exists("/project/test.ts")).toBe(true);
     expect(await fs.readFile("/project/test.ts")).toBe("console.log('hello');");
+  });
+
+  it("accumulates token usage across turns and pushes to UI", async () => {
+    const { agent, ui } = createAgent({
+      userInputs: ["Hello", "World", "exit"],
+      streamText: "Response",
+    });
+
+    await agent.run();
+
+    // updateTokenUsage should have been called (twice, once per turn)
+    expect(ui.lastTokenUsage).not.toBeNull();
+    expect(ui.lastTokenUsage!.turnCount).toBe(2);
+    // Session totals should be consistent (whatever the mock provides, accumulated over 2 turns)
+    expect(ui.lastTokenUsage!.totalTokens).toBe(
+      ui.lastTokenUsage!.totalInputTokens + ui.lastTokenUsage!.totalOutputTokens,
+    );
   });
 
   it("runs pre and post pipelines", async () => {
@@ -126,6 +147,8 @@ describe("Agent", () => {
 
     const agent = new Agent({
       model,
+      provider: "openai",
+      modelName: "gpt-4o",
       fs: new MemoryFileSystemAdapter(),
       ui,
       exec: new MockExecutionEnvironment(),

@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { FileChange } from "#core/entities/FileChange.js";
+import type { SessionTokenUsage } from "#core/entities/AgentContext.js";
 
 export interface PromptRequest {
   message: string;
@@ -66,5 +67,9 @@ export class UIBridge extends EventEmitter {
 
   pushTodos(items: unknown[]): void {
     this.emit("todos", items);
+  }
+
+  pushTokenUsage(session: SessionTokenUsage): void {
+    this.emit("token-usage", session);
   }
 }

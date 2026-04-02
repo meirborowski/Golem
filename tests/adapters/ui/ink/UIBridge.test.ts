@@ -65,6 +65,18 @@ describe("UIBridge", () => {
     expect(result).toEqual(changes);
   });
 
+  it("pushTokenUsage emits token-usage event", () => {
+    const bridge = new UIBridge();
+    let received: unknown = null;
+
+    bridge.on("token-usage", (session: unknown) => { received = session; });
+
+    const session = { totalInputTokens: 100, totalOutputTokens: 50, totalTokens: 150, estimatedCost: 0.001, turnCount: 1 };
+    bridge.pushTokenUsage(session);
+
+    expect(received).toEqual(session);
+  });
+
   it("startProgress and stopProgress emit events", () => {
     const bridge = new UIBridge();
     let startMsg = "";

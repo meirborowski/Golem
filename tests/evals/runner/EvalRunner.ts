@@ -62,6 +62,8 @@ export class EvalRunner {
 
       const agent = new Agent({
         model,
+        provider: "openai",
+        modelName: this.config.modelId ?? "gpt-4o",
         fs,
         ui,
         exec,

@@ -3,6 +3,7 @@ import { render } from "ink";
 import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 import type { FileChange } from "#core/entities/FileChange.js";
 import type { TodoItem } from "#core/entities/TodoItem.js";
+import type { SessionTokenUsage } from "#core/entities/AgentContext.js";
 import { UIBridge } from "./UIBridge.js";
 import { GolemApp } from "./components/GolemApp.js";
 
@@ -63,6 +64,10 @@ export class InkAdapter implements IUserInterface {
 
   updateTodos(items: TodoItem[]): void {
     this.bridge.pushTodos(items);
+  }
+
+  updateTokenUsage(session: SessionTokenUsage): void {
+    this.bridge.pushTokenUsage(session);
   }
 
   close(): void {

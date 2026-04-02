@@ -7,6 +7,14 @@ export interface TokenUsage {
   lastTotalTokens: number;
 }
 
+export interface SessionTokenUsage {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  estimatedCost: number;
+  turnCount: number;
+}
+
 export interface AgentContext {
   messages: ModelMessage[];
   currentRequest: string;
@@ -16,6 +24,7 @@ export interface AgentContext {
   shouldContinue: boolean;
   metadata: Record<string, unknown>;
   tokenUsage?: TokenUsage;
+  sessionTokenUsage: SessionTokenUsage;
   activeAgent?: string;
   pendingHandoff?: string;
 }

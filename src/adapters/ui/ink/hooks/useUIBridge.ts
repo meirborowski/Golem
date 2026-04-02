@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { UIBridge, PromptRequest, ConfirmRequest } from "../UIBridge.js";
 import type { FileChange } from "#core/entities/FileChange.js";
 import type { TodoItem } from "#core/entities/TodoItem.js";
+import type { SessionTokenUsage } from "#core/entities/AgentContext.js";
 import { toolDisplayNames, toolKeyArgExtractors } from "../theme.js";
 
 export type ToolCallEntry = {
@@ -47,6 +48,7 @@ export function useUIBridge(bridge: UIBridge) {
   const [promptRequest, setPromptRequest] = useState<PromptRequest | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [sessionTokenUsage, setSessionTokenUsage] = useState<SessionTokenUsage | null>(null);
 
   useEffect(() => {
     const onDisplay = (msg: string) => {
@@ -154,6 +156,10 @@ export function useUIBridge(bridge: UIBridge) {
       setTodos(items);
     };
 
+    const onTokenUsage = (session: SessionTokenUsage) => {
+      setSessionTokenUsage(session);
+    };
+
     const onProgressStart = (msg: string) => {
       setProgressMessage(msg);
       setAppState("thinking");
@@ -174,6 +180,7 @@ export function useUIBridge(bridge: UIBridge) {
     bridge.on("progress-start", onProgressStart);
     bridge.on("progress-stop", onProgressStop);
     bridge.on("todos", onTodos);
+    bridge.on("token-usage", onTokenUsage);
 
     return () => {
       if (flushTimerRef.current) {
@@ -191,6 +198,7 @@ export function useUIBridge(bridge: UIBridge) {
       bridge.off("progress-start", onProgressStart);
       bridge.off("progress-stop", onProgressStop);
       bridge.off("todos", onTodos);
+      bridge.off("token-usage", onTokenUsage);
     };
   }, [bridge]);
 
@@ -219,6 +227,7 @@ export function useUIBridge(bridge: UIBridge) {
     promptRequest,
     confirmRequest,
     todos,
+    sessionTokenUsage,
     submitPrompt,
     submitConfirmation,
   };

@@ -77,6 +77,8 @@ async function main() {
 
   const agent = new Agent({
     model,
+    provider: config.provider,
+    modelName: config.model,
     fs,
     ui,
     exec,

@@ -15,9 +15,12 @@ import { createHandOffToAgentTool } from "#tools/handOffToAgent.js";
 import { createDelegateToAgentTool } from "#tools/delegateToAgent.js";
 import { AgentRouter } from "./AgentRouter.js";
 import { HeadlessUI } from "./HeadlessUI.js";
+import { lookupPricing, calculateCost } from "./pricing.js";
 
 export interface AgentConfig {
   model: LanguageModel;
+  provider: string;
+  modelName: string;
   fs: IFileSystem;
   ui: IUserInterface;
   exec: IExecutionEnvironment;
@@ -343,11 +346,27 @@ export class Agent implements ISubAgentRunner {
       context.messages.push(...(response.messages as ModelMessage[]));
 
       const usage = await result.totalUsage;
+      const inputTokens = usage.inputTokens ?? 0;
+      const outputTokens = usage.outputTokens ?? 0;
       context.tokenUsage = {
-        lastInputTokens: usage.inputTokens ?? 0,
-        lastOutputTokens: usage.outputTokens ?? 0,
-        lastTotalTokens: usage.totalTokens ?? 0,
+        lastInputTokens: inputTokens,
+        lastOutputTokens: outputTokens,
+        lastTotalTokens: inputTokens + outputTokens,
       };
+
+      // Accumulate session totals
+      const session = context.sessionTokenUsage;
+      session.totalInputTokens += inputTokens;
+      session.totalOutputTokens += outputTokens;
+      session.totalTokens += inputTokens + outputTokens;
+      session.turnCount += 1;
+
+      const pricing = lookupPricing(this.config.provider, this.config.modelName);
+      if (pricing) {
+        session.estimatedCost = calculateCost(session.totalInputTokens, session.totalOutputTokens, pricing);
+      }
+
+      ui.updateTokenUsage(session);
     } catch (e) {
       stopProgress();
       throw e;
@@ -408,6 +427,7 @@ export class Agent implements ISubAgentRunner {
         pendingChanges: [],
         shouldContinue: true,
         metadata: { ...parentContext.metadata },
+        sessionTokenUsage: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, estimatedCost: 0, turnCount: 0 },
         activeAgent: agentDef.name,
       };
     } else {
@@ -423,6 +443,7 @@ export class Agent implements ISubAgentRunner {
         pendingChanges: [],
         shouldContinue: true,
         metadata: {},
+        sessionTokenUsage: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, estimatedCost: 0, turnCount: 0 },
         activeAgent: agentDef.name,
       };
     }
@@ -476,6 +497,7 @@ export class Agent implements ISubAgentRunner {
         textOutput: headlessUI.getTextOutput(),
         pendingChanges: subContext.pendingChanges,
         tokenUsage: subContext.tokenUsage,
+        sessionTokenUsage: subContext.sessionTokenUsage,
       };
     } catch (e) {
       return {
@@ -499,6 +521,7 @@ export class Agent implements ISubAgentRunner {
       pendingChanges: [],
       shouldContinue: true,
       metadata: {},
+      sessionTokenUsage: { totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, estimatedCost: 0, turnCount: 0 },
     };
   }
 }

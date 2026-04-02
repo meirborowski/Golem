@@ -36,6 +36,8 @@ export class HeadlessUI implements IUserInterface {
 
   updateTodos(): void {}
 
+  updateTokenUsage(): void {}
+
   getTextOutput(): string {
     return this.chunks.join("");
   }

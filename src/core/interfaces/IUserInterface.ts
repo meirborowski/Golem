@@ -1,5 +1,6 @@
 import type { FileChange } from "../entities/FileChange.js";
 import type { TodoItem } from "../entities/TodoItem.js";
+import type { SessionTokenUsage } from "../entities/AgentContext.js";
 
 export interface IUserInterface {
   prompt(message?: string): Promise<string>;
@@ -12,4 +13,5 @@ export interface IUserInterface {
   displayToolResult(toolName: string, result: string): void;
   showProgress(message: string): () => void;
   updateTodos(items: TodoItem[]): void;
+  updateTokenUsage(session: SessionTokenUsage): void;
 }

@@ -1,10 +1,12 @@
 import type { IUserInterface } from "#core/interfaces/IUserInterface.js";
 import type { FileChange } from "#core/entities/FileChange.js";
+import type { SessionTokenUsage } from "#core/entities/AgentContext.js";
 
 export class MockUserInterface implements IUserInterface {
   public displayed: string[] = [];
   public errors: string[] = [];
   public streamedChunks: string[] = [];
+  public lastTokenUsage: SessionTokenUsage | null = null;
   private inputs: string[];
   private inputIndex = 0;
   private approveChanges: boolean;
@@ -50,4 +52,8 @@ export class MockUserInterface implements IUserInterface {
   }
 
   updateTodos(): void {}
+
+  updateTokenUsage(session: SessionTokenUsage): void {
+    this.lastTokenUsage = { ...session };
+  }
 }

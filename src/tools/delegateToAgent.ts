@@ -56,6 +56,16 @@ export function createDelegateToAgentTool(
         parentContext.pendingChanges.push(...result.pendingChanges);
       }
 
+      // Merge sub-agent token usage into parent session totals
+      if (result.sessionTokenUsage) {
+        const parent = parentContext.sessionTokenUsage;
+        parent.totalInputTokens += result.sessionTokenUsage.totalInputTokens;
+        parent.totalOutputTokens += result.sessionTokenUsage.totalOutputTokens;
+        parent.totalTokens += result.sessionTokenUsage.totalTokens;
+        parent.turnCount += result.sessionTokenUsage.turnCount;
+        parent.estimatedCost += result.sessionTokenUsage.estimatedCost;
+      }
+
       // Build summary
       const parts: string[] = [];
       parts.push(`Sub-agent "${agentName}" completed.`);

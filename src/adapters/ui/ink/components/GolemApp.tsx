@@ -27,6 +27,7 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
     promptRequest,
     confirmRequest,
     todos,
+    sessionTokenUsage,
     submitPrompt,
     submitConfirmation,
   } = useUIBridge(bridge);
@@ -65,6 +66,7 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
         appState={appState}
         modelName={config.modelName}
         workingDirectory={config.workingDirectory}
+        sessionTokenUsage={sessionTokenUsage}
       />
     </Box>
   );
