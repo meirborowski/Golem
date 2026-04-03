@@ -116,14 +116,14 @@ export class FileAgentRegistry implements IAgentRegistry {
       }
 
       // Array item (indented "- value")
-      const arrayItemMatch = line.match(/^  - (.+)$/);
+      const arrayItemMatch = line.match(/^ {2}- (.+)$/);
       if (arrayItemMatch && currentKey && currentArray) {
         currentArray.push(this.parseValue(arrayItemMatch[1]));
         continue;
       }
 
       // Nested object key (indented "key: value")
-      const nestedMatch = line.match(/^  (\w+):\s*(.+)$/);
+      const nestedMatch = line.match(/^ {2}(\w+):\s*(.+)$/);
       if (nestedMatch && currentKey && currentObject) {
         currentObject[nestedMatch[1]] = this.parseValue(nestedMatch[2]);
         continue;
@@ -167,9 +167,9 @@ export class FileAgentRegistry implements IAgentRegistry {
           // Peek at next lines to decide array vs object
           const idx = lines.indexOf(line);
           const nextLine = idx + 1 < lines.length ? lines[idx + 1] : "";
-          if (nextLine.match(/^  - /)) {
+          if (nextLine.match(/^ {2}- /)) {
             currentArray = [];
-          } else if (nextLine.match(/^  \w+:/)) {
+          } else if (nextLine.match(/^ {2}\w+:/)) {
             currentObject = {};
           }
         }

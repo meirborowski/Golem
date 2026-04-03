@@ -1,16 +1,14 @@
-import { tool, generateText } from "ai";
-import type { LanguageModel } from "ai";
+import { tool } from "ai";
 import { z } from "zod";
 import type { IFileSystem } from "#core/interfaces/IFileSystem.js";
-import type { AgentContext } from "#core/entities/AgentContext.js";
 
 const MAX_RAW_LENGTH = 4000;
 const MAX_FILES = 10;
 
 export function createReadMultipleFilesTool(
   fs: IFileSystem,
-  model: LanguageModel,
-  context: AgentContext,
+  _model: unknown,
+  _context: unknown,
 ) {
   return tool({
     description:

@@ -13,7 +13,8 @@ describe("gitCommit tool", () => {
     const tool = createGitCommitTool(mockExec, "/project");
     const result = await exec(tool, { message: "Add feature" });
     expect(mockExec.executedCommands[0]).toBe("git add -A");
-    expect(mockExec.executedCommands[1]).toContain("Add feature");
+    expect(mockExec.executedCommands[1]).toBe("git commit -F -");
+    expect(mockExec.executedOptions[1]?.stdin).toBe("Add feature");
     expect(result).toContain("abc1234");
   });
 

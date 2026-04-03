@@ -9,13 +9,14 @@ interface StreamingTextProps {
 }
 
 export const StreamingText = React.memo(function StreamingText({ buffer }: StreamingTextProps) {
-  if (!buffer) return null;
-
   const visibleText = useMemo(() => {
+    if (!buffer) return "";
     const lines = buffer.split("\n");
     if (lines.length <= MAX_VISIBLE_LINES) return buffer;
     return lines.slice(-MAX_VISIBLE_LINES).join("\n");
   }, [buffer]);
+
+  if (!visibleText) return null;
 
   return (
     <Box flexDirection="column">

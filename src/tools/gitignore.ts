@@ -26,7 +26,7 @@ export function parseGitignore(content: string): (path: string, isDirectory: boo
 
     // Convert glob pattern to regex
     const regexStr = line
-      .replace(/[.+^${}()|\[\]\\]/g, "\\$&") // escape regex chars (except *)
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex chars (except *)
       .replace(/\*\*/g, "{{GLOBSTAR}}")       // placeholder for **
       .replace(/\*/g, "[^/]*")                // * matches within a segment
       .replace(/{{GLOBSTAR}}/g, ".*");        // ** matches across segments

@@ -14,7 +14,7 @@ export function createGitCommitTool(exec: IExecutionEnvironment, cwd?: string) {
       try {
         // Stage files
         const addCmd = files && files.length > 0
-          ? `git add ${files.map((f) => `"${f}"`).join(" ")}`
+          ? `git add -- ${files.map((f) => f.replace(/'/g, "'\\''")).map((f) => `'${f}'`).join(" ")}`
           : "git add -A";
 
         const addResult = await exec.execute(addCmd, cwd);
@@ -22,9 +22,8 @@ export function createGitCommitTool(exec: IExecutionEnvironment, cwd?: string) {
           return `Error staging files: ${addResult.stderr}`;
         }
 
-        // Commit
-        const escapedMessage = message.replace(/"/g, '\\"');
-        const commitResult = await exec.execute(`git commit -m "${escapedMessage}"`, cwd);
+        // Commit — use stdin to avoid shell escaping issues
+        const commitResult = await exec.execute("git commit -F -", cwd, { stdin: message });
         if (commitResult.exitCode !== 0) {
           return `Error committing: ${commitResult.stderr}`;
         }

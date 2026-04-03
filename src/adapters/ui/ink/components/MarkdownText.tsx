@@ -5,6 +5,7 @@ import { Marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 import { markdownTheme, theme } from "../theme.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- marked-terminal v7 types don't align with marked v15
 const marked = new Marked(markedTerminal(markdownTheme) as any);
 
 /**

@@ -11,7 +11,6 @@ export function createUndoChangeTool(context: AgentContext) {
       filePath: z.string().describe("Path of the file to remove from pending changes"),
     }),
     execute: async ({ filePath }) => {
-      const before = context.pendingChanges.length;
       const removed = context.pendingChanges.filter((c) => c.filePath === filePath);
 
       if (removed.length === 0) {

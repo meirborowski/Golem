@@ -478,7 +478,7 @@ export class Agent implements ISubAgentRunner {
       tools = filtered as typeof rawTools;
     } else {
       // All tools minus interactive ones
-      const { askUser, askUserChoice, ...rest } = rawTools;
+      const { askUser: _askUser, askUserChoice: _askUserChoice, ...rest } = rawTools;
       tools = rest as typeof rawTools;
     }
 

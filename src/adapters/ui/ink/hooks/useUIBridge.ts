@@ -116,7 +116,7 @@ export function useUIBridge(bridge: UIBridge) {
       setAppState("confirming");
     };
 
-    const onToolCall = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) => {
+    const onToolCall = ({ toolName, args: _args }: { toolName: string; args: Record<string, unknown> }) => {
       // If text was streaming before this tool call, commit it first
       // so it appears above the tool activity in the message log.
       if (isStreamingRef.current) {
