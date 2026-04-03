@@ -1,6 +1,10 @@
 ---
 name: architect
 description: Software design agent that explores codebases, analyzes architecture, and produces implementation plans without writing code.
+pipeline:
+  pre:
+    - ContextGathering
+    - ContextCompaction
 tools:
   - readFile
   - readMultipleFiles

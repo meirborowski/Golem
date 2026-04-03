@@ -11,6 +11,7 @@ import { LocalExecutionEnvironment } from "#adapters/exec/LocalExecutionEnvironm
 import { ContextGatheringStep } from "#pipeline/steps/ContextGatheringStep.js";
 import { ContextCompactionStep } from "#pipeline/steps/ContextCompactionStep.js";
 import { HumanApprovalStep } from "#pipeline/steps/HumanApprovalStep.js";
+import { PlanningStep } from "#pipeline/steps/PlanningStep.js";
 import { FileDebugLogger } from "#adapters/debug/FileDebugLogger.js";
 import { NullDebugLogger } from "#adapters/debug/NullDebugLogger.js";
 import { DebugLoggingStep } from "#adapters/debug/DebugLoggingStep.js";
@@ -49,8 +50,19 @@ async function main() {
   });
   const humanApproval = new HumanApprovalStep(ui);
 
+  // Agent registry: built-in agents + project-local agents
+  const selfDir = dirname(fileURLToPath(import.meta.url));
+  const builtInAgentsDir = join(selfDir, "agents");
+  const projectAgentsDir = join(process.cwd(), "agents");
+
+  const agentRegistry = new FileAgentRegistry(builtInAgentsDir, projectAgentsDir);
+  await agentRegistry.loadAll();
+
+  const planning = new PlanningStep(agentRegistry, ui);
+
   const pipelineStepRegistry = new Map<string, IPipelineStep>();
   pipelineStepRegistry.set("ContextGathering", contextGathering);
+  pipelineStepRegistry.set("Planning", planning);
   pipelineStepRegistry.set("ContextCompaction", contextCompaction);
   pipelineStepRegistry.set("HumanApproval", humanApproval);
 
@@ -59,6 +71,7 @@ async function main() {
     prePipeline.register(new DebugLoggingStep("pre-pipeline", debugLogger));
   }
   prePipeline.register(contextGathering);
+  prePipeline.register(planning);
   prePipeline.register(contextCompaction);
 
   const postPipeline = new PipelineEngine(debugLogger);
@@ -66,14 +79,6 @@ async function main() {
     postPipeline.register(new DebugLoggingStep("post-pipeline", debugLogger));
   }
   postPipeline.register(humanApproval);
-
-  // Agent registry: built-in agents + project-local agents
-  const selfDir = dirname(fileURLToPath(import.meta.url));
-  const builtInAgentsDir = join(selfDir, "agents");
-  const projectAgentsDir = join(process.cwd(), "agents");
-
-  const agentRegistry = new FileAgentRegistry(builtInAgentsDir, projectAgentsDir);
-  await agentRegistry.loadAll();
 
   const agent = new Agent({
     model,
@@ -94,6 +99,8 @@ async function main() {
       return createModel({ provider: provider as "openai" | "anthropic" | "google" | "ollama", model: modelName, maxContextTokens: config.maxContextTokens });
     },
   });
+
+  planning.setRunner(agent);
 
   await agent.run();
 }
