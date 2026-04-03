@@ -5,12 +5,19 @@ import type { FileChange } from "#core/entities/FileChange.js";
 
 export class CliAdapter implements IUserInterface {
   private rl: readline.Interface;
+  private _toolCount = 0;
+  private _toolErrors = 0;
 
   constructor() {
     this.rl = readline.createInterface({ input: stdin, output: stdout });
   }
 
   async prompt(message?: string): Promise<string> {
+    if (this._toolCount > 0) {
+      process.stdout.write(`\r⚡ ${this._toolCount} tool${this._toolCount !== 1 ? "s" : ""} used${this._toolErrors > 0 ? ` (${this._toolErrors} failed)` : ""}` + " ".repeat(20) + "\n");
+      this._toolCount = 0;
+      this._toolErrors = 0;
+    }
     return this.rl.question(message ?? "> ");
   }
 
@@ -49,13 +56,19 @@ export class CliAdapter implements IUserInterface {
     console.error(`[ERROR] ${message}`);
   }
 
-  displayToolCall(toolName: string, args: Record<string, unknown>): void {
-    console.log(`[TOOL] ${toolName}(${JSON.stringify(args)})`);
+  displayToolCall(_toolName: string, _args: Record<string, unknown>): void {
+    this._toolCount++;
+    process.stdout.write(`\r⚡ Working... (${this._toolCount} tool${this._toolCount !== 1 ? "s" : ""})`);
   }
 
-  displayToolResult(toolName: string, result: string): void {
-    const summary = result.length > 100 ? result.slice(0, 100) + "..." : result;
-    console.log(`[RESULT] ${toolName}: ${summary}`);
+  displayToolResult(_toolName: string, result: string): void {
+    const isError = result.toLowerCase().startsWith("error");
+    if (isError) {
+      this._toolErrors++;
+      const summary = result.length > 100 ? result.slice(0, 100) + "..." : result;
+      process.stdout.write("\n");
+      console.log(`[ERROR] ${summary}`);
+    }
   }
 
   showProgress(message: string): () => void {

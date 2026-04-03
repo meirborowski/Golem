@@ -4,7 +4,7 @@ import { theme, box, icons } from "../theme.js";
 import { WelcomeBanner } from "./WelcomeBanner.js";
 import { MarkdownText } from "./MarkdownText.js";
 import { ToolCallLine } from "./ToolCallLine.js";
-import type { MessageEntry, ToolCallEntry } from "../hooks/useUIBridge.js";
+import type { MessageEntry, ToolCallEntry, ToolSummaryEntry } from "../hooks/useUIBridge.js";
 import type { InkAdapterConfig } from "../InkAdapter.js";
 
 type StaticItem =
@@ -62,6 +62,21 @@ export function MessageLog({ messages, config = {} }: MessageLogProps) {
               <Box flexDirection="column">
                 <MarkdownText content={msg.content} />
               </Box>
+            </Box>
+          );
+        }
+
+        if (msg.type === "tool-summary") {
+          const summary = msg as ToolSummaryEntry;
+          return (
+            <Box key={item.key}>
+              <Text>    </Text>
+              <Text color={theme.toolLabel}>
+                {icons.tool} {summary.totalCount} tool{summary.totalCount !== 1 ? "s" : ""} used
+              </Text>
+              {summary.errorCount > 0 && (
+                <Text color={theme.error}> ({summary.errorCount} failed)</Text>
+              )}
             </Box>
           );
         }

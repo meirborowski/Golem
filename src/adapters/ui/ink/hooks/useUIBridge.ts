@@ -4,6 +4,7 @@ import type { FileChange } from "#core/entities/FileChange.js";
 import type { TodoItem } from "#core/entities/TodoItem.js";
 import type { SessionTokenUsage } from "#core/entities/AgentContext.js";
 import { toolDisplayNames, toolKeyArgExtractors } from "../theme.js";
+// toolDisplayNames/toolKeyArgExtractors still imported for error display
 
 export type ToolCallEntry = {
   type: "tool-call";
@@ -14,18 +15,19 @@ export type ToolCallEntry = {
   resultSummary?: string;
 };
 
+export type ToolSummaryEntry = {
+  type: "tool-summary";
+  totalCount: number;
+  errorCount: number;
+};
+
 export type MessageEntry =
   | { type: "user"; content: string }
   | { type: "assistant"; content: string }
   | { type: "error"; content: string }
   | { type: "system"; content: string }
-  | ToolCallEntry;
-
-export type PendingToolCall = {
-  rawName: string;
-  label: string;
-  keyArg: string;
-};
+  | ToolCallEntry
+  | ToolSummaryEntry;
 
 export type AppState = "idle" | "thinking" | "streaming" | "confirming";
 
@@ -43,7 +45,10 @@ export function useUIBridge(bridge: UIBridge) {
   const streamRef = useRef("");
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isStreamingRef = useRef(false);
-  const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([]);
+  const [pendingToolCount, setPendingToolCount] = useState(0);
+  const [responseToolCount, setResponseToolCount] = useState(0);
+  const responseErrorCountRef = useRef(0);
+  const pendingRawNamesRef = useRef<string[]>([]);
   const [progressMessage, setProgressMessage] = useState("");
   const [promptRequest, setPromptRequest] = useState<PromptRequest | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
@@ -112,10 +117,8 @@ export function useUIBridge(bridge: UIBridge) {
     };
 
     const onToolCall = ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) => {
-      const { label, keyArg } = extractToolInfo(toolName, args);
-
       // If text was streaming before this tool call, commit it first
-      // so it appears above the tool call in the message log.
+      // so it appears above the tool activity in the message log.
       if (isStreamingRef.current) {
         if (flushTimerRef.current) {
           clearTimeout(flushTimerRef.current);
@@ -126,30 +129,56 @@ export function useUIBridge(bridge: UIBridge) {
         setAppState("thinking");
       }
 
-      setPendingToolCalls((prev) => [...prev, { rawName: toolName, label, keyArg }]);
+      pendingRawNamesRef.current = [...pendingRawNamesRef.current, toolName];
+      setPendingToolCount((c) => c + 1);
+      setResponseToolCount((c) => c + 1);
     };
 
     const onToolResult = ({ toolName, result }: { toolName: string; result: string }) => {
       const isError = result.toLowerCase().startsWith("error");
-      setPendingToolCalls((prev) => {
-        const idx = prev.findIndex((tc) => tc.rawName === toolName);
-        if (idx === -1) return prev;
-        const matched = prev[idx];
-        const remaining = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+
+      // Remove from pending tracking
+      const idx = pendingRawNamesRef.current.indexOf(toolName);
+      if (idx !== -1) {
+        pendingRawNamesRef.current = [
+          ...pendingRawNamesRef.current.slice(0, idx),
+          ...pendingRawNamesRef.current.slice(idx + 1),
+        ];
+      }
+
+      if (isError) {
+        responseErrorCountRef.current += 1;
+        const { label, keyArg } = extractToolInfo(toolName, { });
         const entry: ToolCallEntry = {
           type: "tool-call",
-          content: `${toolName} ${matched.keyArg}`,
-          toolName: matched.label,
-          keyArg: matched.keyArg,
-          status: isError ? "error" : "success",
-          resultSummary: isError ? (result.length > 120 ? result.slice(0, 120) + "..." : result) : undefined,
+          content: `${toolName}`,
+          toolName: label,
+          keyArg: keyArg,
+          status: "error",
+          resultSummary: result.length > 120 ? result.slice(0, 120) + "..." : result,
         };
-
-        // Commit tool result to messages immediately so Static locks it in place
         setMessages((msgs) => [...msgs, entry]);
+      }
 
-        return remaining;
-      });
+      const newPendingCount = pendingRawNamesRef.current.length;
+      setPendingToolCount(newPendingCount);
+
+      // When all pending tools complete, emit a summary
+      if (newPendingCount === 0) {
+        setResponseToolCount((total) => {
+          if (total > 0) {
+            const errorCount = responseErrorCountRef.current;
+            const summaryEntry: ToolSummaryEntry = {
+              type: "tool-summary",
+              totalCount: total,
+              errorCount,
+            };
+            setMessages((msgs) => [...msgs, summaryEntry]);
+          }
+          return 0;
+        });
+        responseErrorCountRef.current = 0;
+      }
     };
 
     const onTodos = (items: TodoItem[]) => {
@@ -205,6 +234,8 @@ export function useUIBridge(bridge: UIBridge) {
   const submitPrompt = useCallback((text: string) => {
     if (promptRequest) {
       setMessages((prev) => [...prev, { type: "user", content: text }]);
+      setResponseToolCount(0);
+      responseErrorCountRef.current = 0;
       promptRequest.resolve(text);
       setPromptRequest(null);
     }
@@ -223,7 +254,8 @@ export function useUIBridge(bridge: UIBridge) {
     streamBuffer,
     appState,
     progressMessage,
-    pendingToolCalls,
+    pendingToolCount,
+    responseToolCount,
     promptRequest,
     confirmRequest,
     todos,

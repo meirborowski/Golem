@@ -8,7 +8,7 @@ import { StreamingText } from "./StreamingText.js";
 import { GolemSpinner } from "./GolemSpinner.js";
 import { PromptInput } from "./PromptInput.js";
 import { ChangeConfirmation } from "./ChangeConfirmation.js";
-import { PendingToolCallLine } from "./PendingToolCallLine.js";
+import { ToolActivityIndicator } from "./ToolActivityIndicator.js";
 import { TodoList } from "./TodoList.js";
 import { StatusBar } from "./StatusBar.js";
 
@@ -23,7 +23,8 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
     streamBuffer,
     appState,
     progressMessage,
-    pendingToolCalls,
+    pendingToolCount,
+    responseToolCount,
     promptRequest,
     confirmRequest,
     todos,
@@ -38,9 +39,9 @@ export function GolemApp({ bridge, config = {} }: GolemAppProps) {
 
       <TodoList items={todos} />
 
-      {pendingToolCalls.map((tc, i) => (
-        <PendingToolCallLine key={`pending-${i}`} label={tc.label} keyArg={tc.keyArg} />
-      ))}
+      {pendingToolCount > 0 && (
+        <ToolActivityIndicator toolCount={responseToolCount} />
+      )}
 
       <Box flexDirection="column">
         {appState === "streaming" && <StreamingText buffer={streamBuffer} />}
